@@ -22,7 +22,10 @@ import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import org.w3c.dom.Text;
+
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.List;
 
 import coffee.nils.dev.receipttracker.data.DAO;
@@ -43,7 +46,8 @@ public class MainActivity extends AppCompatActivity
     private class ReceiptHolder extends RecyclerView.ViewHolder implements View.OnClickListener
     {
         private TextView textViewBusinessName;
-        private TextView textViewName;
+        private TextView textViewDate;
+        private TextView textViewAmount;
 
         private Receipt receipt;
 
@@ -51,6 +55,9 @@ public class MainActivity extends AppCompatActivity
         {
             super(inflater.inflate(R.layout.list_item, parent, false));
             textViewBusinessName = (TextView) itemView.findViewById(R.id.textView_name);
+            textViewDate = (TextView) itemView.findViewById(R.id.textView_date);
+            textViewAmount = (TextView) itemView.findViewById(R.id.textView_amount);
+
             itemView.setOnClickListener(this);
         }
 
@@ -61,10 +68,11 @@ public class MainActivity extends AppCompatActivity
             {
                 textViewBusinessName.setText(receipt.getStoreName());
             }
-            else
-            {
-                textViewBusinessName.setText("no name :(");
-            }
+
+            textViewAmount.setText(Double.toString(receipt.getTotalAmount()));
+            SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-yyyy");
+            textViewDate.setText(sdf.format(receipt.getDate()));
+
             //textViewName = (TextView) itemView.findViewById((R.id.textView_date));
         }
 

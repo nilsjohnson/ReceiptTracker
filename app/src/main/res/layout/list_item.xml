@@ -1,20 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/list_item"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:layout_height="wrap_content" >
 
     <TextView
         android:id="@+id/textView_name"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="default text" />
+        android:layout_weight="1"
+        tools:text="Whole Foods" />
+
+    <TextView
+        android:id="@+id/textView_amount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textAlignment="textEnd"
+        tools:text="$12.87" />
 
     <TextView
         android:id="@+id/textView_date"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingBottom="16sp"
-        android:text="default date" />
+        android:layout_weight="1"
+        android:text="TextView"
+        android:textAlignment="textEnd"
+        tools:text="12/18/1992" />
+
 </LinearLayout>

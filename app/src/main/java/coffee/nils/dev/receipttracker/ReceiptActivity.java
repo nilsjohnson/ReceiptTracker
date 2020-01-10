@@ -4,13 +4,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ImageView;
+
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.util.Calendar;
@@ -29,7 +33,8 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
     private File photoFile;
 
     private EditText editTextName;
-    private EditText editTextDate;
+    private EditText editTextTotalAmount;
+    private Button btnDate;
 
     private DAO dao;
 
@@ -40,26 +45,12 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
     {
         super.onCreate(savedInstanceState);
 
-        dao = DAO.get(this.getApplicationContext());
-
-        setContentView(R.layout.activity_receipt);
-        imageView = (ImageView)findViewById(R.id.imageView_recepit);
-        UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
-
-        receipt = dao.getReceiptById(receiptId);
-        photoFile = dao.getPhotoFile(receipt);
-
-        Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
-        imageView.setImageBitmap(bitmap);
-
-        editTextName = (EditText)findViewById(R.id.editText_name);
-        editTextName.addTextChangedListener(new TextWatcher()
+        // for handling when user changes the name of where their receipt is from
+        class NameChangeListener implements TextWatcher
         {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after)
-            {
-
-            }
+            { }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
@@ -70,13 +61,73 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
 
             @Override
             public void afterTextChanged(Editable s)
+            { }
+        }
+
+        // for handling when user changes the total receipt amount
+        class UpdateTotalAmountHandler implements TextWatcher
+        {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after)
+            { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count)
             {
+                try
+                {
+                    double value = Double.parseDouble(s.toString());
+                    receipt.setTotalAmount(value);
+                }
+                catch(NumberFormatException e)
+                {
+                    editTextTotalAmount.setBackgroundColor(Color.RED);
+                }
 
             }
-        });
 
-        editTextDate = (EditText)findViewById(R.id.editText_date);
-        editTextDate.setOnClickListener(new ChooseDateHandler());
+            @Override
+            public void afterTextChanged(Editable s)
+            { }
+        }
+
+        // for when the user clicks the button to change's the receipts date
+        class ChooseDateHandler implements View.OnClickListener
+        {
+            @Override
+            public void onClick(View v)
+            {
+                FragmentManager manager = getSupportFragmentManager();
+                DatePickerFragment dialog = DatePickerFragment.newInstance(new Date(), ReceiptActivity.this);
+                dialog.show(manager, DIALOG_DATE);
+            }
+        }
+
+        // set the view and get the DAO
+        setContentView(R.layout.activity_receipt);
+        dao = DAO.get(this.getApplicationContext());
+
+        // get the reciept
+        UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
+        receipt = dao.getReceiptById(receiptId);
+
+        // set the image
+        imageView = (ImageView)findViewById(R.id.imageView_receipt);
+        photoFile = dao.getPhotoFile(receipt);
+        Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
+        imageView.setImageBitmap(bitmap);
+
+        // set the name related things
+        editTextName = (EditText)findViewById(R.id.editText_name);
+        editTextName.addTextChangedListener(new NameChangeListener());
+
+        // set the date related things
+        btnDate = (Button)findViewById(R.id.button_date);
+        btnDate.setOnClickListener(new ChooseDateHandler());
+
+        // set the receipt's total-amount related things
+        editTextTotalAmount = (EditText) findViewById(R.id.editText_amount);
+        editTextTotalAmount.addTextChangedListener(new UpdateTotalAmountHandler());
 
     }
 
@@ -100,17 +151,8 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
         Calendar cal = Calendar.getInstance();
         cal.set(year, monthOfYear, dayOfMonth);
         Date d = cal.getTime();
-        editTextDate.setText(editTextDate.toString());
+        btnDate.setText(d.toString());
     }
 
-    class ChooseDateHandler implements View.OnClickListener
-    {
-        @Override
-        public void onClick(View v)
-        {
-            FragmentManager manager = getSupportFragmentManager();
-            DatePickerFragment dialog = DatePickerFragment.newInstance(new Date(), ReceiptActivity.this);
-            dialog.show(manager, DIALOG_DATE);
-        }
-    }
+
 }
