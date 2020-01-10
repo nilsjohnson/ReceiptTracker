@@ -131,20 +131,6 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
 
     }
 
-    private void updatePhotoView()
-    {
-        if(photoFile == null || !photoFile.exists())
-        {
-
-            imageView.setImageDrawable(null);
-        }
-        else
-        {
-            Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
-            imageView.setImageBitmap(bitmap);
-        }
-    }
-
     @Override
     public void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth)
     {
@@ -152,6 +138,7 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
         cal.set(year, monthOfYear, dayOfMonth);
         Date d = cal.getTime();
         btnDate.setText(d.toString());
+        receipt.setDate(d);
     }
 
 
