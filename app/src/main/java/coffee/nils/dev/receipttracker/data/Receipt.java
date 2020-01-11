@@ -1,6 +1,7 @@
 package coffee.nils.dev.receipttracker.data;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
@@ -11,9 +12,13 @@ public class Receipt
     private int int_totalAmount;
     private Date date;
 
+    // defines how we show date to user
+    private static SimpleDateFormat sdf = new SimpleDateFormat("MMMM/dd/yyyy");
+
     public Receipt()
     {
         this.id = UUID.randomUUID();
+        this.date = new Date();
     }
 
 
@@ -66,5 +71,10 @@ public class Receipt
     {
         val = val*100;
         int_totalAmount = (int)Math.round(val);
+    }
+
+    public String getSimpleDate()
+    {
+        return sdf.format(this.date);
     }
 }

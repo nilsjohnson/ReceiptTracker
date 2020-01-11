@@ -25,7 +25,7 @@ import coffee.nils.dev.receipttracker.data.DAO;
 import coffee.nils.dev.receipttracker.data.Receipt;
 import coffee.nils.dev.receipttracker.util.ImageUtil;
 
-public class ReceiptActivity extends AppCompatActivity  implements DatePicker.OnDateChangedListener
+public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.OnDateChangedListener
 {
     private static final String DIALOG_DATE = "DialogDate";
 
@@ -35,6 +35,7 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
     private EditText editTextName;
     private EditText editTextTotalAmount;
     private Button btnDate;
+    private Button btnOk;
 
     private DAO dao;
 
@@ -78,6 +79,7 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
                 {
                     double value = Double.parseDouble(s.toString());
                     receipt.setTotalAmount(value);
+                    editTextTotalAmount.setBackgroundColor(Color.WHITE);
                 }
                 catch(NumberFormatException e)
                 {
@@ -92,14 +94,34 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
         }
 
         // for when the user clicks the button to change's the receipts date
-        class ChooseDateHandler implements View.OnClickListener
+        class ChooseDateHandler implements View.OnClickListener, DatePicker.OnDateChangedListener
         {
             @Override
             public void onClick(View v)
             {
                 FragmentManager manager = getSupportFragmentManager();
-                DatePickerFragment dialog = DatePickerFragment.newInstance(new Date(), ReceiptActivity.this);
+                DatePickerFragment dialog = DatePickerFragment.newInstance(new Date(), this);
                 dialog.show(manager, DIALOG_DATE);
+            }
+
+            @Override
+            public void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth)
+            {
+                Calendar cal = Calendar.getInstance();
+                cal.set(year, monthOfYear, dayOfMonth);
+                Date d = cal.getTime();
+                receipt.setDate(d);
+                putDateOnButton();
+            }
+        }
+
+        // for when the user presses OK
+        class OkButtonListener implements View.OnClickListener
+        {
+            @Override
+            public void onClick(View v)
+            {
+                finish();
             }
         }
 
@@ -119,27 +141,26 @@ public class ReceiptActivity extends AppCompatActivity  implements DatePicker.On
 
         // set the name related things
         editTextName = (EditText)findViewById(R.id.editText_name);
+        editTextName.setText(receipt.getStoreName());
         editTextName.addTextChangedListener(new NameChangeListener());
 
         // set the date related things
         btnDate = (Button)findViewById(R.id.button_date);
         btnDate.setOnClickListener(new ChooseDateHandler());
+        putDateOnButton();
 
         // set the receipt's total-amount related things
         editTextTotalAmount = (EditText) findViewById(R.id.editText_amount);
+        editTextTotalAmount.setText(Double.toString(receipt.getTotalAmount()));
         editTextTotalAmount.addTextChangedListener(new UpdateTotalAmountHandler());
 
+        // for the OK button
+        btnOk = (Button) findViewById(R.id.button_ok);
+        btnOk.setOnClickListener(new OkButtonListener());
     }
 
-    @Override
-    public void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth)
+    private void putDateOnButton()
     {
-        Calendar cal = Calendar.getInstance();
-        cal.set(year, monthOfYear, dayOfMonth);
-        Date d = cal.getTime();
-        btnDate.setText(d.toString());
-        receipt.setDate(d);
+        btnDate.setText(receipt.getSimpleDate());
     }
-
-
 }

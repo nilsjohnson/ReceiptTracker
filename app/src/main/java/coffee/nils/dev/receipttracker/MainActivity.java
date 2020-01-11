@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity
             {
                 textViewBusinessName.setText(receipt.getStoreName());
             }
-
+            //TODO use Receipt method
             textViewAmount.setText(Double.toString(receipt.getTotalAmount()));
             SimpleDateFormat sdf = new SimpleDateFormat("MM-dd-yyyy");
             textViewDate.setText(sdf.format(receipt.getDate()));
