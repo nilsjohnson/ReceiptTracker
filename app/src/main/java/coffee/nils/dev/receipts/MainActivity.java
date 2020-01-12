@@ -30,6 +30,13 @@ import coffee.nils.dev.receipts.data.Receipt;
 
 public class MainActivity extends AppCompatActivity
 {
+    static {
+        System.loadLibrary("native-lib");
+        System.loadLibrary("opencv_java4");
+    }
+
+    public native String stringFromJNI();
+
     DAO dao;
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.newReceiptId";
     private FloatingActionButton fabAddReceipt;

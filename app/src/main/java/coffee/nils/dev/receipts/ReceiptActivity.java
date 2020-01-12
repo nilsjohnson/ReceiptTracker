@@ -14,6 +14,9 @@ import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+
 import java.io.File;
 import java.util.Calendar;
 import java.util.Date;
@@ -25,6 +28,14 @@ import coffee.nils.dev.receipts.util.ImageUtil;
 
 public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.OnDateChangedListener
 {
+    static
+    {
+        System.loadLibrary("native-lib");
+        System.loadLibrary("opencv_java4");
+    }
+
+    public native long autoCrop(long addr);
+
     private static final String DIALOG_DATE = "DialogDate";
 
     private ImageView imageView;
@@ -49,7 +60,8 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
         {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after)
-            { }
+            {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
@@ -60,7 +72,8 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
 
             @Override
             public void afterTextChanged(Editable s)
-            { }
+            {
+            }
         }
 
         // for handling when user changes the total receipt amount
@@ -68,7 +81,8 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
         {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after)
-            { }
+            {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
@@ -78,8 +92,7 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
                     double value = Double.parseDouble(s.toString());
                     receipt.setTotalAmount(value);
                     editTextTotalAmount.setBackgroundColor(Color.WHITE);
-                }
-                catch(NumberFormatException e)
+                } catch (NumberFormatException e)
                 {
                     editTextTotalAmount.setBackgroundColor(Color.RED);
                 }
@@ -88,7 +101,8 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
 
             @Override
             public void afterTextChanged(Editable s)
-            { }
+            {
+            }
         }
 
         // for when the user clicks the button to change's the receipts date
@@ -124,26 +138,41 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
         }
 
         // set the view and get the DAO
-        setContentView(R.layout.activity_receipt);
         dao = DAO.get(this.getApplicationContext());
+        setContentView(R.layout.activity_receipt);
+
 
         // get the reciept
         UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
         receipt = dao.getReceiptById(receiptId);
 
-        // set the image
-        imageView = (ImageView)findViewById(R.id.imageView_receipt);
+
         photoFile = dao.getPhotoFile(receipt);
         Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
-        imageView.setImageBitmap(bitmap);
+
+        Mat mat = new Mat();
+        Utils.bitmapToMat(bitmap, mat);
+
+        long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
+        Mat cropped = new Mat(addr);
+        Bitmap forCropped = ImageUtil.getEmptyBitmap(cropped);
+       //Mat cropped =  new Mat(autoCrop(mat.getNativeObjAddr()));
+        Utils.matToBitmap(cropped, forCropped);
+
+        // set the image
+        imageView = (ImageView) findViewById(R.id.imageView_receipt);
+        photoFile = dao.getPhotoFile(receipt);
+        // Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
+        imageView.setImageBitmap(forCropped);
+
 
         // set the name related things
-        editTextName = (EditText)findViewById(R.id.editText_name);
+        editTextName = (EditText) findViewById(R.id.editText_name);
         editTextName.setText(receipt.getStoreName());
         editTextName.addTextChangedListener(new NameChangeListener());
 
         // set the date related things
-        btnDate = (Button)findViewById(R.id.button_date);
+        btnDate = (Button) findViewById(R.id.button_date);
         btnDate.setOnClickListener(new ChooseDateHandler());
         putDateOnButton();
 

@@ -5,6 +5,10 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
 
+import org.opencv.core.Mat;
+
+import static android.graphics.Bitmap.Config.ARGB_8888;
+
 public class ImageUtil
 {
     public static Bitmap getScaledBitmap(String path, Activity activity)
@@ -14,6 +18,17 @@ public class ImageUtil
                 .getSize(size);
 
         return getScaledBitmap(path, size.x, size.y);
+    }
+
+    public static Bitmap getEmptyBitmap(Mat mat)
+    {
+        int height = mat.rows();
+        int width = mat.cols();
+
+        Bitmap.Config config = Bitmap.Config.ARGB_8888;
+
+        Bitmap bmp = Bitmap.createBitmap(width, height, config);
+        return bmp;
     }
 
     public static Bitmap getScaledBitmap(String path, int destWidth, int destHeight)
