@@ -1,2 +1,2 @@
-include ':app', 'openCV4.20'
-rootProject.name='ReceiptTracker'
+include ':app'
+rootProject.name='Receipts'
