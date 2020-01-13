@@ -5,11 +5,13 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
@@ -18,6 +20,7 @@ import org.opencv.android.Utils;
 import org.opencv.core.Mat;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
@@ -28,6 +31,7 @@ import coffee.nils.dev.receipts.util.ImageUtil;
 
 public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.OnDateChangedListener
 {
+    private static final String TAG = "ReceiptActivity";
     static
     {
         System.loadLibrary("native-lib");
@@ -150,20 +154,41 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
         photoFile = dao.getPhotoFile(receipt);
         Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
 
-        Mat mat = new Mat();
-        Utils.bitmapToMat(bitmap, mat);
-
-        long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
-        Mat cropped = new Mat(addr);
-        Bitmap forCropped = ImageUtil.getEmptyBitmap(cropped);
-       //Mat cropped =  new Mat(autoCrop(mat.getNativeObjAddr()));
-        Utils.matToBitmap(cropped, forCropped);
-
         // set the image
+        // if this is the first time showing reciept, autocrop it
+        if(receipt.imageNeedsCrop())
+        {
+            Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)",Toast.LENGTH_SHORT);
+            toast.show();
+
+            Mat mat = new Mat();
+            Utils.bitmapToMat(bitmap, mat);
+            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
+            Mat cropped = new Mat(addr);
+            Bitmap forCropped = ImageUtil.getEmptyBitmap(cropped);
+            Utils.matToBitmap(cropped, forCropped);
+            bitmap = forCropped;
+
+            // todo add exception
+            try
+            {
+                dao.saveImage(bitmap, receipt.getFileName());
+                receipt.setImageNeedsCrop(false);
+            } catch (IOException e)
+            {
+                Log.e(TAG, "Problem saving resized bitmap as a jpg.\n" + e.getMessage());
+            }
+        }
+        else
+        {
+            Toast toast= Toast.makeText(getApplicationContext(),"Already AutoCropped!",Toast.LENGTH_SHORT);
+            toast.show();
+        }
+
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
         photoFile = dao.getPhotoFile(receipt);
         // Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
-        imageView.setImageBitmap(forCropped);
+        imageView.setImageBitmap(bitmap);
 
 
         // set the name related things

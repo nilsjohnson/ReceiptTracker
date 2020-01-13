@@ -58,4 +58,5 @@ public class ImageUtil
 
         return BitmapFactory.decodeFile(path, options);
     }
+
 }

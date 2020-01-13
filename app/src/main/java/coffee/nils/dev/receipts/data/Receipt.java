@@ -10,6 +10,7 @@ public class Receipt
     private String storeName;
     private int int_totalAmount;
     private Date date;
+    private boolean imageNeedsCrop = true;
 
     // defines how we show date to user
     private static SimpleDateFormat sdf = new SimpleDateFormat("MMMM/dd/yyyy");
@@ -76,4 +77,15 @@ public class Receipt
     {
         return sdf.format(this.date);
     }
+
+    public void setImageNeedsCrop(boolean val)
+    {
+        imageNeedsCrop = val;
+    }
+
+    public boolean imageNeedsCrop()
+    {
+        return this.imageNeedsCrop;
+    }
+
 }
