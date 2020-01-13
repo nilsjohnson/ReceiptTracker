@@ -29,9 +29,10 @@ import coffee.nils.dev.receipts.data.DAO;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.util.ImageUtil;
 
-public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.OnDateChangedListener
+public class ReceiptActivity extends AppCompatActivity
 {
     private static final String TAG = "ReceiptActivity";
+
     static
     {
         System.loadLibrary("native-lib");
@@ -156,7 +157,7 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
 
         // set the image
         // if this is the first time showing reciept, autocrop it
-        if(receipt.imageNeedsCrop())
+        if(!receipt.imageIsCropped())
         {
             Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)",Toast.LENGTH_SHORT);
             toast.show();
@@ -173,7 +174,7 @@ public class ReceiptActivity extends AppCompatActivity//  implements DatePicker.
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
-                receipt.setImageNeedsCrop(false);
+                receipt.SetImageIsCropped(true);
             } catch (IOException e)
             {
                 Log.e(TAG, "Problem saving resized bitmap as a jpg.\n" + e.getMessage());

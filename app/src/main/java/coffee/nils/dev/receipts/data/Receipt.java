@@ -10,14 +10,19 @@ public class Receipt
     private String storeName;
     private int int_totalAmount;
     private Date date;
-    private boolean imageNeedsCrop = true;
+    private boolean imageIsCropped = false;
 
     // defines how we show date to user
     private static SimpleDateFormat sdf = new SimpleDateFormat("MMMM/dd/yyyy");
 
     public Receipt()
     {
-        this.id = UUID.randomUUID();
+        this(UUID.randomUUID());
+    }
+
+    public Receipt(UUID id)
+    {
+        this.id = id;
         this.date = new Date();
     }
 
@@ -78,14 +83,14 @@ public class Receipt
         return sdf.format(this.date);
     }
 
-    public void setImageNeedsCrop(boolean val)
+    public void SetImageIsCropped(boolean val)
     {
-        imageNeedsCrop = val;
+        imageIsCropped = val;
     }
 
-    public boolean imageNeedsCrop()
+    public boolean imageIsCropped()
     {
-        return this.imageNeedsCrop;
+        return this.imageIsCropped;
     }
 
 }

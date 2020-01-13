@@ -6,6 +6,7 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,11 +26,12 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.DAO;
-import coffee.nils.dev.receipts.data.DAO;
 import coffee.nils.dev.receipts.data.Receipt;
 
 public class MainActivity extends AppCompatActivity
 {
+    private static String TAG = "MainActivity";
+
     static {
         System.loadLibrary("native-lib");
         System.loadLibrary("opencv_java4");

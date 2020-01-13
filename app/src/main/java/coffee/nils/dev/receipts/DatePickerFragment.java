@@ -48,10 +48,6 @@ public class DatePickerFragment extends DialogFragment
                             public void onClick(DialogInterface dialog, int which)
                             {
                                 // using listener, nothing needs to be here
-                               /* int year = datePicker.getYear();
-                                int month = datePicker.getMonth();
-                                int day = datePicker.getDayOfMonth();
-                                Date date = new GregorianCalendar(year, month, day).getTime();*/
                             }
                         })
                 .create();
