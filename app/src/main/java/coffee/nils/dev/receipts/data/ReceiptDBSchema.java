@@ -14,6 +14,7 @@ public class ReceiptDBSchema
             public static final String UUID = "uuid";
             public static final String STORE_NAME = "store_name";
             public static final String DATE = "date";
+            public static final String AMOUNT = "amount";
             public static final String IMAGE_IS_CROPPED = "image_is_cropped";
         }
     }

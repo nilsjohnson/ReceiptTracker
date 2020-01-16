@@ -8,7 +8,7 @@ public class Receipt
 {
     private UUID id;
     private String storeName;
-    private int int_totalAmount;
+    private double totalAmount;
     private Date date;
     private boolean imageIsCropped = false;
 
@@ -52,14 +52,7 @@ public class Receipt
 
     public double getTotalAmount()
     {
-
-
-        return this.int_totalAmount*.01;
-    }
-
-    public void setTotalAmount(int totalAmount)
-    {
-        this.int_totalAmount = totalAmount;
+        return this.totalAmount;
     }
 
     public Date getDate()
@@ -74,8 +67,7 @@ public class Receipt
 
     public void setTotalAmount(double val)
     {
-        val = val*100;
-        int_totalAmount = (int)Math.round(val);
+        this.totalAmount = val;
     }
 
     public String getSimpleDate()

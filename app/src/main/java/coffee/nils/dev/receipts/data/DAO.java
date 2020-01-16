@@ -71,6 +71,7 @@ public class DAO
         ContentValues values = new ContentValues();
         values.put(ReceiptTable.Cols.UUID, receipt.getId().toString());
         values.put(ReceiptTable.Cols.STORE_NAME, receipt.getStoreName());
+        values.put(ReceiptTable.Cols.AMOUNT, receipt.getTotalAmount());
         values.put(ReceiptTable.Cols.DATE, receipt.getDate().getTime());
         values.put(ReceiptTable.Cols.IMAGE_IS_CROPPED, receipt.imageIsCropped() ? 1 : 0);
 

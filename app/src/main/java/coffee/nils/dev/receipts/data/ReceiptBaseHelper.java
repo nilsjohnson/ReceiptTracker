@@ -27,6 +27,7 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
                 ReceiptTable.Cols.UUID + " INTEGER, " +
                 ReceiptTable.Cols.STORE_NAME + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
                 ReceiptTable.Cols.DATE + " INTEGER, " +
+                ReceiptTable.Cols.AMOUNT + " INTEGER, " +
                 ReceiptTable.Cols.IMAGE_IS_CROPPED + " INTEGER " +
                 ")"
         );

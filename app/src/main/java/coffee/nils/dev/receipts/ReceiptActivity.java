@@ -24,6 +24,7 @@ import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
@@ -253,8 +254,13 @@ public class ReceiptActivity extends AppCompatActivity
         putDateOnButton();
 
         // set the receipt's total-amount related things
+        double totalAmount = receipt.getTotalAmount();
+        totalAmount = totalAmount*100;
+        totalAmount = Math.round(totalAmount);
+        totalAmount = totalAmount/100;
+
         editTextTotalAmount = (EditText) findViewById(R.id.editText_amount);
-        editTextTotalAmount.setText("$" + Double.toString(receipt.getTotalAmount()));
+        editTextTotalAmount.setText("$" + Double.toString(totalAmount));
         editTextTotalAmount.addTextChangedListener(new UpdateTotalAmountHandler());
 
         // for the OK button
@@ -266,9 +272,10 @@ public class ReceiptActivity extends AppCompatActivity
     @Override
     public void onBackPressed()
     {
-        if(receiptChanged)
+        if (receiptChanged)
         {
-            DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+            DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener()
+            {
                 @Override
                 public void onClick(DialogInterface dialog, int choice)
                 {
@@ -279,7 +286,7 @@ public class ReceiptActivity extends AppCompatActivity
                             break;
 
                         case DialogInterface.BUTTON_NEGATIVE:
-                            Toast toast = Toast.makeText(getApplicationContext(),"No Changes Made",Toast. LENGTH_SHORT);
+                            Toast toast = Toast.makeText(getApplicationContext(), "No Changes Made", Toast.LENGTH_SHORT);
                             toast.show();
                             finish();
                             break;
@@ -290,6 +297,10 @@ public class ReceiptActivity extends AppCompatActivity
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage(R.string.are_you_sure).setPositiveButton(R.string.yes, dialogClickListener)
                     .setNegativeButton(R.string.no, dialogClickListener).show();
+        }
+        else
+        {
+            finish();
         }
     }
 
