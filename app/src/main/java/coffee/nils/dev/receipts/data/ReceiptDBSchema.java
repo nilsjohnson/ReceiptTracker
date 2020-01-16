@@ -7,6 +7,7 @@ public class ReceiptDBSchema
     public static final class ReceiptTable
     {
         public static final String NAME = "receipts";
+        public static final int MAX_FIELD_LENGTH_DEFAULT = 255;
 
         public static final class Cols
         {

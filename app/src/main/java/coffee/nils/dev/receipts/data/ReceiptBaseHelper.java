@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
+import static coffee.nils.dev.receipts.data.ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT;
 
 
 public class ReceiptBaseHelper extends SQLiteOpenHelper
@@ -23,10 +24,10 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
     {
         db.execSQL("create table " + ReceiptTable.NAME + "(" +
                 "_id integer primary key autoincrement, " +
-                ReceiptTable.Cols.UUID + ", " +
-                ReceiptTable.Cols.STORE_NAME + ", " +
-                ReceiptTable.Cols.DATE + ", " +
-                ReceiptTable.Cols.IMAGE_IS_CROPPED +
+                ReceiptTable.Cols.UUID + " INTEGER, " +
+                ReceiptTable.Cols.STORE_NAME + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
+                ReceiptTable.Cols.DATE + " INTEGER, " +
+                ReceiptTable.Cols.IMAGE_IS_CROPPED + " INTEGER " +
                 ")"
         );
     }

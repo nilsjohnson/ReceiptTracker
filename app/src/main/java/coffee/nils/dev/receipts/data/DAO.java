@@ -120,8 +120,11 @@ public class DAO
         String uuidString = receipt.getId().toString();
 
         ContentValues values = getContentValues(receipt);
+
         database.update(ReceiptTable.NAME, values, ReceiptTable.Cols.UUID + " = ?",
                 new String[]{uuidString});
+
+
 
 
         for (Receipt r : receiptList)

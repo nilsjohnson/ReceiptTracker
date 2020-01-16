@@ -1,5 +1,7 @@
 package coffee.nils.dev.receipts;
 
+import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -13,6 +15,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 
@@ -27,6 +30,7 @@ import java.util.UUID;
 
 import coffee.nils.dev.receipts.data.DAO;
 import coffee.nils.dev.receipts.data.Receipt;
+import coffee.nils.dev.receipts.data.ReceiptDBSchema;
 import coffee.nils.dev.receipts.util.ImageUtil;
 
 public class ReceiptActivity extends AppCompatActivity
@@ -53,32 +57,57 @@ public class ReceiptActivity extends AppCompatActivity
 
     private DAO dao;
 
+
     Receipt receipt;
+    boolean receiptChanged = false;
+    boolean validName = true;
+    boolean validAmount = true;
+    boolean validDate = true;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
 
-        // for handling when user changes the name of where their receipt is from
+        /**
+         * For handling when the user changes the receipt's name.
+         */
         class NameChangeListener implements TextWatcher
         {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after)
-            {
-            }
-
+            { }
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
             {
-                receipt.setStoreName(s.toString());
-                dao.updateReceipt(receipt);
+                String name = s.toString();
+                String pattern = "[-a-zA-Z0-9!@#$%^&*() +=_~`]+"; // allows pretty much everything, except escape chars
+
+                if(name.length() < ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT && name.matches(pattern))
+                {
+                    receipt.setStoreName(s.toString());
+                    editTextName.setBackgroundColor(Color.WHITE);
+                    receiptChanged = true;
+                    validName = true;
+                }
+                else
+                {
+                    validName = false;
+                    if(!name.equals(""))
+                    {
+                        editTextName.setBackgroundColor(Color.RED);
+                    }
+                    else
+                    {
+                        editTextName.setBackgroundColor(Color.WHITE);
+                    }
+                }
             }
 
             @Override
             public void afterTextChanged(Editable s)
-            {
-            }
+            { }
         }
 
         // for handling when user changes the total receipt amount
@@ -86,28 +115,46 @@ public class ReceiptActivity extends AppCompatActivity
         {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after)
-            {
-            }
+            { }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count)
             {
+                // try to parse a double from the string
                 try
                 {
-                    double value = Double.parseDouble(s.toString());
+                    String value_str = s.toString().trim();
+                    // allows dollar signs at start, but strips them for further validation
+                    if(value_str.charAt(0) == '$') // will throw StringIndexOutOfBoundsException if string is empty
+                    {
+                        value_str = value_str.replace("$", "");
+                    }
+
+                    double value = Double.parseDouble(value_str);
                     receipt.setTotalAmount(value);
                     editTextTotalAmount.setBackgroundColor(Color.WHITE);
-                } catch (NumberFormatException e)
+                    receiptChanged = true;
+                    validAmount = true;
+                }
+                catch (Exception e) // Catches out of bound or number format exception
                 {
-                    editTextTotalAmount.setBackgroundColor(Color.RED);
+                    if (s.toString().equals("") || s.toString().equals("$"))
+                    {
+                        editTextTotalAmount.setBackgroundColor(Color.WHITE);
+                    }
+                    else
+                    {
+                        editTextTotalAmount.setBackgroundColor(Color.RED);
+                    }
+
+                    validAmount = false;
                 }
 
             }
 
             @Override
             public void afterTextChanged(Editable s)
-            {
-            }
+            { }
         }
 
         // for when the user clicks the button to change's the receipts date
@@ -121,6 +168,7 @@ public class ReceiptActivity extends AppCompatActivity
                 dialog.show(manager, DIALOG_DATE);
             }
 
+            // TODO validate date
             @Override
             public void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth)
             {
@@ -128,6 +176,7 @@ public class ReceiptActivity extends AppCompatActivity
                 cal.set(year, monthOfYear, dayOfMonth);
                 Date d = cal.getTime();
                 receipt.setDate(d);
+                receiptChanged = true;
                 putDateOnButton();
             }
         }
@@ -138,9 +187,11 @@ public class ReceiptActivity extends AppCompatActivity
             @Override
             public void onClick(View v)
             {
-                finish();
+                saveReceipt();
             }
         }
+
+
 
         // set the view and get the DAO
         dao = DAO.get(this.getApplicationContext());
@@ -159,7 +210,7 @@ public class ReceiptActivity extends AppCompatActivity
         // if this is the first time showing reciept, autocrop it
         if(!receipt.imageIsCropped())
         {
-            Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)",Toast.LENGTH_SHORT);
+            Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)", Toast.LENGTH_SHORT);
             toast.show();
 
             Mat mat = new Mat();
@@ -170,7 +221,6 @@ public class ReceiptActivity extends AppCompatActivity
             Utils.matToBitmap(cropped, forCropped);
             bitmap = forCropped;
 
-            // todo add exception
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
@@ -204,7 +254,7 @@ public class ReceiptActivity extends AppCompatActivity
 
         // set the receipt's total-amount related things
         editTextTotalAmount = (EditText) findViewById(R.id.editText_amount);
-        editTextTotalAmount.setText(Double.toString(receipt.getTotalAmount()));
+        editTextTotalAmount.setText("$" + Double.toString(receipt.getTotalAmount()));
         editTextTotalAmount.addTextChangedListener(new UpdateTotalAmountHandler());
 
         // for the OK button
@@ -212,8 +262,82 @@ public class ReceiptActivity extends AppCompatActivity
         btnOk.setOnClickListener(new OkButtonListener());
     }
 
+
+    @Override
+    public void onBackPressed()
+    {
+        if(receiptChanged)
+        {
+            DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int choice)
+                {
+                    switch (choice)
+                    {
+                        case DialogInterface.BUTTON_POSITIVE:
+                            saveReceipt();
+                            break;
+
+                        case DialogInterface.BUTTON_NEGATIVE:
+                            Toast toast = Toast.makeText(getApplicationContext(),"No Changes Made",Toast. LENGTH_SHORT);
+                            toast.show();
+                            finish();
+                            break;
+                    }
+                }
+            };
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage(R.string.are_you_sure).setPositiveButton(R.string.yes, dialogClickListener)
+                    .setNegativeButton(R.string.no, dialogClickListener).show();
+        }
+    }
+
     private void putDateOnButton()
     {
         btnDate.setText(receipt.getSimpleDate());
+    }
+
+    private void saveReceipt()
+    {
+        if(receiptChanged)
+        {
+            if(validAmount && validName && validDate)
+            {
+                dao.updateReceipt(receipt);
+                Toast toast = Toast.makeText(getApplicationContext(),R.string.saved,Toast. LENGTH_SHORT);
+                toast.show();
+                finish();
+            }
+            else
+            {
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int choice)
+                    {
+                        switch (choice)
+                        {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                if (!validAmount)
+                                {
+                                    editTextTotalAmount.setBackgroundColor(Color.RED);
+                                }
+                                if (!validName)
+                                {
+                                    editTextName.setBackgroundColor(Color.RED);
+                                }
+                                if(!validDate)
+                                {
+                                    // TODO
+                                }
+                                break;
+                        }
+                    }
+                };
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage(R.string.check_fields).setPositiveButton(R.string.ok, dialogClickListener).show();
+            }
+        }
     }
 }

@@ -13,7 +13,7 @@ public class Receipt
     private boolean imageIsCropped = false;
 
     // defines how we show date to user
-    private static SimpleDateFormat sdf = new SimpleDateFormat("MMMM/dd/yyyy");
+    private static SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
 
     public Receipt()
     {
