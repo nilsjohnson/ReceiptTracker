@@ -255,12 +255,10 @@ public class ReceiptActivity extends AppCompatActivity
 
         // set the receipt's total-amount related things
         double totalAmount = receipt.getTotalAmount();
-        totalAmount = totalAmount*100;
-        totalAmount = Math.round(totalAmount);
-        totalAmount = totalAmount/100;
-
+        DecimalFormat df = new DecimalFormat("##.00");
+        String rounded = df.format(totalAmount);
         editTextTotalAmount = (EditText) findViewById(R.id.editText_amount);
-        editTextTotalAmount.setText("$" + Double.toString(totalAmount));
+        editTextTotalAmount.setText("$" + rounded);
         editTextTotalAmount.addTextChangedListener(new UpdateTotalAmountHandler());
 
         // for the OK button
