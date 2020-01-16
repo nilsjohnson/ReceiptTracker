@@ -1,11 +1,22 @@
 package coffee.nils.dev.receipts.util;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.util.Log;
+import android.util.SparseArray;
+
+import com.google.android.gms.vision.Frame;
+import com.google.android.gms.vision.text.TextBlock;
+import com.google.android.gms.vision.text.TextRecognizer;
 
 import org.opencv.core.Mat;
+
+import java.util.ArrayList;
+
+import coffee.nils.dev.receipts.data.GuessableReceiptValues;
 
 import static android.graphics.Bitmap.Config.ARGB_8888;
 
@@ -57,6 +68,37 @@ public class ImageUtil
         options.inSampleSize = inSampleSize;
 
         return BitmapFactory.decodeFile(path, options);
+    }
+
+    public static GuessableReceiptValues guessProperties(Bitmap bitmap, Context context)
+    {
+        GuessableReceiptValues grv = new GuessableReceiptValues();
+
+        TextRecognizer textRecognizer = new TextRecognizer.Builder(context).build();
+
+        Frame imageFrame = new Frame.Builder()
+
+                .setBitmap(bitmap)                 // your image bitmap
+                .build();
+
+        String imageText = "";
+
+
+        SparseArray<TextBlock> textBlocks = textRecognizer.detect(imageFrame);
+
+        for (int i = 0; i < textBlocks.size(); i++) {
+            TextBlock textBlock = textBlocks.get(textBlocks.keyAt(i));
+            imageText = textBlock.getValue();
+            if(i == 0)
+            {
+                grv.storeName = imageText;
+            }
+
+            Log.d("image utils", imageText);
+        }
+
+        return grv;
+
     }
 
 }

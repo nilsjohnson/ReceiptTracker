@@ -30,9 +30,12 @@ import java.util.Date;
 import java.util.UUID;
 
 import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.GuessableReceiptValues;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDBSchema;
 import coffee.nils.dev.receipts.util.ImageUtil;
+
+import static coffee.nils.dev.receipts.util.ImageUtil.guessProperties;
 
 public class ReceiptActivity extends AppCompatActivity
 {
@@ -222,6 +225,11 @@ public class ReceiptActivity extends AppCompatActivity
             Utils.matToBitmap(cropped, forCropped);
             bitmap = forCropped;
 
+            // try to guess values
+            GuessableReceiptValues grv = guessProperties(bitmap, this.getApplicationContext());
+            receipt.setStoreName(grv.storeName);
+            //receipt.setTotalAmount(grv.);
+
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
@@ -235,6 +243,7 @@ public class ReceiptActivity extends AppCompatActivity
         {
             Toast toast= Toast.makeText(getApplicationContext(),"Already AutoCropped!",Toast.LENGTH_SHORT);
             toast.show();
+            guessProperties(bitmap, this.getApplicationContext());
         }
 
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
