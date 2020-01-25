@@ -26,7 +26,7 @@ public class ReceiptCursorWrapper extends CursorWrapper
         receipt.setStoreName(storeName);
         receipt.setTotalAmount(amount);
         receipt.setDate(new Date(date));
-        receipt.SetImageIsCropped(isCropped != 0);
+        receipt.setHasBeenReviewed(isCropped != 0);
 
         return receipt;
     }

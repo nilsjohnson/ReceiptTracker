@@ -10,7 +10,7 @@ public class Receipt
     private String storeName;
     private double totalAmount;
     private Date date;
-    private boolean imageIsCropped = false;
+    private boolean hasBeenReviewd = false;
 
     // defines how we show date to user
     private static SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
@@ -75,14 +75,15 @@ public class Receipt
         return sdf.format(this.date);
     }
 
-    public void SetImageIsCropped(boolean val)
+    public void setHasBeenReviewed(boolean val)
     {
-        imageIsCropped = val;
+        this.hasBeenReviewd = val;
     }
 
-    public boolean imageIsCropped()
+    // TODO, update database to reflect this name, instead of "isCropped"
+    public boolean hasBeenReviewd()
     {
-        return this.imageIsCropped;
+        return this.hasBeenReviewd;
     }
 
 }

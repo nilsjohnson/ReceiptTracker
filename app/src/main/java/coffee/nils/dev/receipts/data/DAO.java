@@ -8,10 +8,16 @@ import android.graphics.Bitmap;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +34,8 @@ public class DAO
     private Context context;
     private List<Receipt> receiptList;
     private SQLiteDatabase database;
+
+    private HashMap<String, String> storeMap;
 
     public static DAO get(Context context)
     {
@@ -73,7 +81,7 @@ public class DAO
         values.put(ReceiptTable.Cols.STORE_NAME, receipt.getStoreName());
         values.put(ReceiptTable.Cols.AMOUNT, receipt.getTotalAmount());
         values.put(ReceiptTable.Cols.DATE, receipt.getDate().getTime());
-        values.put(ReceiptTable.Cols.IMAGE_IS_CROPPED, receipt.imageIsCropped() ? 1 : 0);
+        values.put(ReceiptTable.Cols.IMAGE_IS_CROPPED, receipt.hasBeenReviewd() ? 1 : 0);
 
         return values;
     }
@@ -174,4 +182,68 @@ public class DAO
 
         return new ReceiptCursorWrapper(cursor);
     }
+
+    public String getStoreNameByFirstLine(String firstLine)
+    {
+        if(this.storeMap == null)
+        {
+            this.readStoreMap();
+        }
+        return this.storeMap.get(firstLine);
+    }
+
+    public void addStoreNameFirstLine(String firstLine, String storeName)
+    {
+        if(this.storeMap == null)
+        {
+            this.readStoreMap();
+        }
+
+        this.storeMap.put(firstLine, storeName);
+        this.saveStoreMap();
+    }
+
+    private void saveStoreMap()
+    {
+        try
+        {
+            FileOutputStream fos = new FileOutputStream("storeMap.dat");
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+            oos.writeObject(this.storeMap);
+
+            fos.close();
+            oos.close();
+            Log.d(TAG, "Saved storeMap succesfully");
+
+        }
+        catch (FileNotFoundException e)
+        {
+            Log.e(TAG, e.getMessage());
+        }
+        catch (IOException e)
+        {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+
+    private void readStoreMap()
+    {
+        try
+        {
+            FileInputStream fis = new FileInputStream("storeMap.dat");
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            this.storeMap = (HashMap<String, String>) ois.readObject();
+
+            ois.close();
+            Log.d(TAG, "read storeMap succesfully");
+        }
+        catch(Exception e)
+        {
+            Log.e(TAG, e.getMessage());
+            this.storeMap = new HashMap<String, String>();
+        }
+    }
+
 }

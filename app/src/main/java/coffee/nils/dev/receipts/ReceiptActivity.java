@@ -1,6 +1,5 @@
 package coffee.nils.dev.receipts;
 
-import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -9,6 +8,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
+import android.view.textservice.SpellCheckerSession;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
@@ -30,16 +30,16 @@ import java.util.Date;
 import java.util.UUID;
 
 import coffee.nils.dev.receipts.data.DAO;
-import coffee.nils.dev.receipts.data.GuessableReceiptValues;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDBSchema;
 import coffee.nils.dev.receipts.util.ImageUtil;
+import coffee.nils.dev.receipts.util.ReceiptReader;
 
-import static coffee.nils.dev.receipts.util.ImageUtil.guessProperties;
 
 public class ReceiptActivity extends AppCompatActivity
 {
     private static final String TAG = "ReceiptActivity";
+    private ReceiptReader receiptReader;
 
     static
     {
@@ -67,6 +67,9 @@ public class ReceiptActivity extends AppCompatActivity
     boolean validName = true;
     boolean validAmount = true;
     boolean validDate = true;
+
+    // for spell checking
+    private SpellCheckerSession mScs;
 
 
     @Override
@@ -211,11 +214,12 @@ public class ReceiptActivity extends AppCompatActivity
         Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
 
         // set the image
-        // if this is the first time showing reciept, autocrop it
-        if(!receipt.imageIsCropped())
+        // if this is the first time showing reciept, autocrop and autofill it
+        if(!receipt.hasBeenReviewd())
         {
             Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)", Toast.LENGTH_SHORT);
             toast.show();
+
 
             Mat mat = new Mat();
             Utils.bitmapToMat(bitmap, mat);
@@ -225,16 +229,17 @@ public class ReceiptActivity extends AppCompatActivity
             Utils.matToBitmap(cropped, forCropped);
             bitmap = forCropped;
 
-            // try to guess values
-            GuessableReceiptValues grv = guessProperties(bitmap, this.getApplicationContext());
-            receipt.setStoreName(grv.storeName);
-            //receipt.setTotalAmount(grv.);
+            // try to guess values;
+            receiptReader = new ReceiptReader(bitmap, this);
+            receipt.setStoreName(receiptReader.getStoreName());
+            receipt.setTotalAmount(receiptReader.getTotalAmount());
+            receipt.setDate(receiptReader.getDate());
 
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
-                receipt.SetImageIsCropped(true);
-            } catch (IOException e)
+            }
+            catch (IOException e)
             {
                 Log.e(TAG, "Problem saving resized bitmap as a jpg.\n" + e.getMessage());
             }
@@ -243,7 +248,6 @@ public class ReceiptActivity extends AppCompatActivity
         {
             Toast toast= Toast.makeText(getApplicationContext(),"Already AutoCropped!",Toast.LENGTH_SHORT);
             toast.show();
-            guessProperties(bitmap, this.getApplicationContext());
         }
 
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
@@ -307,6 +311,13 @@ public class ReceiptActivity extends AppCompatActivity
         }
         else
         {
+            // if the user looked at this receipt for the first time, then hit the back button, w/out
+            // making any changes, we assume it's OK.
+            if(receipt.hasBeenReviewd() == false)
+            {
+                receipt.setHasBeenReviewed(true);
+                saveReceipt();
+            }
             finish();
         }
     }
@@ -318,8 +329,19 @@ public class ReceiptActivity extends AppCompatActivity
 
     private void saveReceipt()
     {
+        // if this was the users first time looking at this receipt, mark it as read and
+        // "teach" this receipt to the reader
+        if(receipt.hasBeenReviewd() == false)
+        {
+            receipt.setHasBeenReviewed(true);
+            receiptChanged = true;
+            receiptReader.setCorrectStoreName(editTextName.getText().toString());
+            receiptReader.resolve();
+        }
+
         if(receiptChanged)
         {
+            // these must be valid before saving.
             if(validAmount && validName && validDate)
             {
                 dao.updateReceipt(receipt);
@@ -327,6 +349,7 @@ public class ReceiptActivity extends AppCompatActivity
                 toast.show();
                 finish();
             }
+            // notify the user to fix their errors
             else
             {
                 DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
