@@ -3,6 +3,7 @@ package coffee.nils.dev.receipts.data;
 import android.database.Cursor;
 import android.database.CursorWrapper;
 
+import java.util.AbstractMap;
 import java.util.Date;
 import java.util.UUID;
 
@@ -29,5 +30,12 @@ public class ReceiptCursorWrapper extends CursorWrapper
         receipt.setHasBeenReviewed(isCropped != 0);
 
         return receipt;
+    }
+
+    public AbstractMap.SimpleEntry getStoreKeyValue()
+    {
+        String key = getString(getColumnIndex(ReceiptDBSchema.StoreNameHashTable.COLS.KEY));
+        String value = getString(getColumnIndex(ReceiptDBSchema.StoreNameHashTable.COLS.VALUE));
+        return new AbstractMap.SimpleEntry(key, value);
     }
 }

@@ -15,8 +15,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -53,6 +53,8 @@ public class DAO
         database = new ReceiptBaseHelper(context).getWritableDatabase();
 
         receiptList = new ArrayList<>();
+        storeMap = new HashMap<String, String>();
+
         ReceiptCursorWrapper cursor = queryReceipts(null, null);
 
         try
@@ -66,7 +68,28 @@ public class DAO
         }
         catch(Exception e)
         {
-            Log.e(TAG, "Problem reading in db.\n" + e.getMessage());
+            Log.e(TAG, "Problem reading in receipt table.\n" + e.getMessage());
+        }
+        finally
+        {
+            cursor.close();
+        }
+
+        cursor = queryStoreNameHashTable(null, null);
+
+        try
+        {
+            cursor.moveToFirst();
+            while(!cursor.isAfterLast())
+            {
+                AbstractMap.SimpleEntry kv = cursor.getStoreKeyValue();
+                storeMap.put(kv.getKey().toString(), kv.getValue().toString());
+                cursor.moveToNext();
+            }
+        }
+        catch(Exception e)
+        {
+            Log.e(TAG, "Problem reading in store name hash table.\n" + e.getMessage());
         }
         finally
         {
@@ -74,7 +97,7 @@ public class DAO
         }
     }
 
-    private static ContentValues getContentValues(Receipt receipt)
+    private static ContentValues getReceiptContentValues(Receipt receipt)
     {
         ContentValues values = new ContentValues();
         values.put(ReceiptTable.Cols.UUID, receipt.getId().toString());
@@ -82,6 +105,15 @@ public class DAO
         values.put(ReceiptTable.Cols.AMOUNT, receipt.getTotalAmount());
         values.put(ReceiptTable.Cols.DATE, receipt.getDate().getTime());
         values.put(ReceiptTable.Cols.IMAGE_IS_CROPPED, receipt.hasBeenReviewd() ? 1 : 0);
+
+        return values;
+    }
+
+    private static ContentValues getStoreHashTableContentValues(AbstractMap.SimpleEntry entry)
+    {
+        ContentValues values = new ContentValues();
+        values.put(StoreNameHashTable.COLS.KEY, entry.getKey().toString());
+        values.put(StoreNameHashTable.COLS.VALUE, entry.getValue().toString());
 
         return values;
     }
@@ -107,7 +139,7 @@ public class DAO
     public Receipt createReceipt()
     {
         Receipt r = new Receipt();
-        ContentValues values = getContentValues(r);
+        ContentValues values = getReceiptContentValues(r);
         database.insert(ReceiptTable.NAME, null, values);
         receiptList.add(r);
         return r;
@@ -128,13 +160,10 @@ public class DAO
     {
         String uuidString = receipt.getId().toString();
 
-        ContentValues values = getContentValues(receipt);
+        ContentValues values = getReceiptContentValues(receipt);
 
         database.update(ReceiptTable.NAME, values, ReceiptTable.Cols.UUID + " = ?",
                 new String[]{uuidString});
-
-
-
 
         for (Receipt r : receiptList)
         {
@@ -183,67 +212,51 @@ public class DAO
         return new ReceiptCursorWrapper(cursor);
     }
 
+    private ReceiptCursorWrapper queryStoreNameHashTable(String whereClause, String[] whereArgs)
+    {
+        Cursor cursor = database.query(
+                StoreNameHashTable.NAME,
+                null, // selects all cols
+                whereClause,
+                whereArgs,
+                null,
+                null,
+                null
+        );
+
+        return new ReceiptCursorWrapper(cursor);
+    }
+
     public String getStoreNameByFirstLine(String firstLine)
     {
-        if(this.storeMap == null)
-        {
-            this.readStoreMap();
-        }
         return this.storeMap.get(firstLine);
     }
 
-    public void addStoreNameFirstLine(String firstLine, String storeName)
+    public void addStoreNameKvPair(String storeKey, String storeName)
     {
-        if(this.storeMap == null)
-        {
-            this.readStoreMap();
-        }
+        this.storeMap.put(storeKey, storeName);
 
-        this.storeMap.put(firstLine, storeName);
-        this.saveStoreMap();
+        ContentValues values = getStoreHashTableContentValues(new AbstractMap.SimpleEntry(storeKey, storeName));
+        database.insert(StoreNameHashTable.NAME, null, values);
+        printStoreNameHashTable();
     }
 
-    private void saveStoreMap()
+    public void updateStoreNameValue(String key, String storeName)
     {
-        try
-        {
-            FileOutputStream fos = new FileOutputStream("storeMap.dat");
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
+        ContentValues values = getStoreHashTableContentValues(new AbstractMap.SimpleEntry(key, storeName));
 
-            oos.writeObject(this.storeMap);
-
-            fos.close();
-            oos.close();
-            Log.d(TAG, "Saved storeMap succesfully");
-
-        }
-        catch (FileNotFoundException e)
-        {
-            Log.e(TAG, e.getMessage());
-        }
-        catch (IOException e)
-        {
-            Log.e(TAG, e.getMessage());
-        }
+        database.update(StoreNameHashTable.NAME, values, StoreNameHashTable.COLS.KEY + " = ?",
+                new String[]{key});
     }
 
-    private void readStoreMap()
+    private void printStoreNameHashTable()
     {
-        try
-        {
-            FileInputStream fis = new FileInputStream("storeMap.dat");
-            ObjectInputStream ois = new ObjectInputStream(fis);
+        StringBuilder table = new StringBuilder();
 
-            this.storeMap = (HashMap<String, String>) ois.readObject();
+        for (String key: storeMap.keySet()){
+            table.append(key + ": " + storeMap.get(key) + "\n");
+        }
 
-            ois.close();
-            Log.d(TAG, "read storeMap succesfully");
-        }
-        catch(Exception e)
-        {
-            Log.e(TAG, e.getMessage());
-            this.storeMap = new HashMap<String, String>();
-        }
+        Log.d(TAG, table.toString());
     }
-
 }

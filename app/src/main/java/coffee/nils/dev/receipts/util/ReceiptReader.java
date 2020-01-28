@@ -11,10 +11,8 @@ import com.google.android.gms.vision.text.TextRecognizer;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -186,9 +184,8 @@ public class ReceiptReader
     {
         if(!this.resolved)
         {
-            Log.d(TAG, "Remembering " + this.firstLine + " as " + this.storeName);
-            dao.addStoreNameFirstLine(this.firstLine, this.storeName);
-            // storeMap.put(this.firstLine, this.storeName);
+            Log.d(TAG, "Remembering " + toKey(this.firstLine) + " as " + this.storeName);
+            dao.addStoreNameKvPair(this.firstLine, this.storeName);
         }
         else
         {
@@ -204,6 +201,22 @@ public class ReceiptReader
         }
 
         return new Date();
+    }
+
+    /**
+     * @return The key value for the storeMap. Keys must:
+     *      -have no whitespace
+     *      -be uppercase
+     *      -no punctuation
+     *  Example: Forever 21 --> FOREVER
+     *           Stop And Shop --> STOPANDSHOP
+     *           O'Reilly Auto Parts --> OREILLYAUTOPARTS
+     */
+    private String toKey(String firstLine)
+    {
+        return firstLine
+                .toUpperCase()
+                .replaceAll("[^A-Z]", "");
     }
 }
 

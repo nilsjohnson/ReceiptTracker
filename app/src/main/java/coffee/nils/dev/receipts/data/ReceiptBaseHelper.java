@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
+import static coffee.nils.dev.receipts.data.ReceiptDBSchema.ReceiptTable.Cols.STORE_NAME;
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT;
 
 
@@ -25,12 +26,21 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
         db.execSQL("create table " + ReceiptTable.NAME + "(" +
                 "_id integer primary key autoincrement, " +
                 ReceiptTable.Cols.UUID + " INTEGER, " +
-                ReceiptTable.Cols.STORE_NAME + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
+                STORE_NAME + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
                 ReceiptTable.Cols.DATE + " INTEGER, " +
                 ReceiptTable.Cols.AMOUNT + " INTEGER, " +
                 ReceiptTable.Cols.IMAGE_IS_CROPPED + " INTEGER " +
                 ")"
         );
+
+        db.execSQL("create table " + StoreNameHashTable.NAME + "(" +
+                "_id integer primary key autoincrement, " +
+                StoreNameHashTable.COLS.KEY + " varchar(" + StoreNameHashTable.MAX_FIELD_LENGTH_DEFAULT + "), " +
+                StoreNameHashTable.COLS.VALUE + " varchar(" + StoreNameHashTable.MAX_FIELD_LENGTH_DEFAULT + ") " +
+                ")"
+        );
+
+
     }
 
     @Override

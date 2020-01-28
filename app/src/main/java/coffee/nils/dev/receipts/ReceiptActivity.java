@@ -89,9 +89,8 @@ public class ReceiptActivity extends AppCompatActivity
             public void onTextChanged(CharSequence s, int start, int before, int count)
             {
                 String name = s.toString();
-                String pattern = "[-a-zA-Z0-9!@#$%^&*() +=_~`]+"; // allows pretty much everything, except escape chars
 
-                if(name.length() < ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT && name.matches(pattern))
+                if(name.length() < ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT)
                 {
                     receipt.setStoreName(s.toString());
                     editTextName.setBackgroundColor(Color.WHITE);
@@ -234,6 +233,9 @@ public class ReceiptActivity extends AppCompatActivity
             receipt.setStoreName(receiptReader.getStoreName());
             receipt.setTotalAmount(receiptReader.getTotalAmount());
             receipt.setDate(receiptReader.getDate());
+
+            toast = Toast.makeText(getApplicationContext(),"Please Review This Information", Toast.LENGTH_SHORT);
+            toast.show();
 
             try
             {
