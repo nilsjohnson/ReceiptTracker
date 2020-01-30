@@ -8,12 +8,8 @@ import android.graphics.Bitmap;
 import android.util.Log;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -100,16 +96,16 @@ public class DAO
     private static ContentValues getReceiptContentValues(Receipt receipt)
     {
         ContentValues values = new ContentValues();
-        values.put(ReceiptTable.Cols.UUID, receipt.getId().toString());
-        values.put(ReceiptTable.Cols.STORE_NAME, receipt.getStoreName());
-        values.put(ReceiptTable.Cols.AMOUNT, receipt.getTotalAmount());
-        values.put(ReceiptTable.Cols.DATE, receipt.getDate().getTime());
-        values.put(ReceiptTable.Cols.IMAGE_IS_CROPPED, receipt.hasBeenReviewd() ? 1 : 0);
+        values.put(ReceiptTable.COLS.UUID, receipt.getId().toString());
+        values.put(ReceiptTable.COLS.STORE_NAME, receipt.getStoreName());
+        values.put(ReceiptTable.COLS.AMOUNT, receipt.getTotalAmount());
+        values.put(ReceiptTable.COLS.DATE, receipt.getDate().getTime());
+        values.put(ReceiptTable.COLS.IMAGE_IS_CROPPED, receipt.hasBeenReviewd() ? 1 : 0);
 
         return values;
     }
 
-    private static ContentValues getStoreHashTableContentValues(AbstractMap.SimpleEntry entry)
+    public static ContentValues getStoreHashTableContentValues(AbstractMap.SimpleEntry entry)
     {
         ContentValues values = new ContentValues();
         values.put(StoreNameHashTable.COLS.KEY, entry.getKey().toString());
@@ -162,7 +158,7 @@ public class DAO
 
         ContentValues values = getReceiptContentValues(receipt);
 
-        database.update(ReceiptTable.NAME, values, ReceiptTable.Cols.UUID + " = ?",
+        database.update(ReceiptTable.NAME, values, ReceiptTable.COLS.UUID + " = ?",
                 new String[]{uuidString});
 
         for (Receipt r : receiptList)
@@ -227,7 +223,7 @@ public class DAO
         return new ReceiptCursorWrapper(cursor);
     }
 
-    public String getStoreNameByFirstLine(String firstLine)
+    public String getStoreByKey(String firstLine)
     {
         return this.storeMap.get(firstLine);
     }

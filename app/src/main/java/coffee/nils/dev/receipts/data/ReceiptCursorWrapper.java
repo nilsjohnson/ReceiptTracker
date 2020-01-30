@@ -16,11 +16,11 @@ public class ReceiptCursorWrapper extends CursorWrapper
 
     public Receipt getReceipt()
     {
-        String uuidString = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.Cols.UUID));
-        String storeName = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.Cols.STORE_NAME));
-        double amount = getDouble(getColumnIndex(ReceiptDBSchema.ReceiptTable.Cols.AMOUNT));
-        long date = getLong(getColumnIndex(ReceiptDBSchema.ReceiptTable.Cols.DATE));
-        int isCropped = getInt(getColumnIndex(ReceiptDBSchema.ReceiptTable.Cols.IMAGE_IS_CROPPED));
+        String uuidString = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.UUID));
+        String storeName = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.STORE_NAME));
+        double amount = getDouble(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.AMOUNT));
+        long date = getLong(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.DATE));
+        int isCropped = getInt(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.IMAGE_IS_CROPPED));
 
         Receipt receipt = new Receipt(UUID.fromString(uuidString));
 
