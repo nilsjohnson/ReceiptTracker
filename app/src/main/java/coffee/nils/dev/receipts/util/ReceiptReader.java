@@ -2,6 +2,7 @@ package coffee.nils.dev.receipts.util;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 import android.util.Patterns;
 import android.util.SparseArray;
@@ -11,8 +12,6 @@ import com.google.android.gms.vision.text.TextBlock;
 import com.google.android.gms.vision.text.TextRecognizer;
 
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -25,28 +24,26 @@ import java.util.regex.Pattern;
 
 import coffee.nils.dev.receipts.data.DAO;
 
-/**
- * This class maintains a static HashMap<k,v> where k is the text of the first block of text of a
- * receipt, and v is the name of the store, as confirmed by a user. When a receipt is parsed, we
- * use the HashMap to see if we know the store name.
- */
+
 public class ReceiptReader
 {
+    private static final String NO_NAME_FOUND_TEXT = "Please Enter Store Name";
     private static String TAG = "ReceiptReader";
     public static final int STORE_NAME_KEY_MAX_LENGTH = 10;
     private Bitmap image;
     private TextRecognizer textRecognizer;
     private DAO dao;
 
-    // values we "guess"
+    // values we want to find for the user
     private String storeName;
     private double highestDollarAmt;
     private Date purchaseDate;
 
-    // for lookup to identify store name
+    // identifiers we pull from the receipt
     private String firstLine;
     private ArrayList<String> urlList = new ArrayList<>();
     private ArrayList<String> phoneNumList = new ArrayList<>();
+    private String textAfterThankYou;
 
     // to see what possible stores this belongs to
     HashMap<String, Integer> foundStores = new HashMap<>();
@@ -82,25 +79,38 @@ public class ReceiptReader
         Pattern urlPattern = Patterns.WEB_URL;
 
         // patern for matching a phone number
-        String phonePattern_str = "(\\(?\\d\\d\\d\\)?(\\s|-)\\d\\d\\d[\\-|\\s]\\d\\d\\d\\d)";
+        String phonePattern_str = "(\\(?\\d\\d\\d\\)?(\\s+|-)\\d\\d\\d[\\-|\\s]+\\d\\d\\d\\d)";
         Pattern phonePattern = Pattern.compile(phonePattern_str);
+
+        // pattern for finding "thank you for shopping at..."
+        String thankYouPattern_str = "(Thank(s)?\\s+(you)?\\s+For\\s+Shopping(\\s+At)?)";
+        Pattern thankYouPattern = Pattern.compile(thankYouPattern_str, Pattern.CASE_INSENSITIVE);
 
         // read the receipt into TextBlocks
         Frame imageFrame = new Frame.Builder().setBitmap(this.image).build();
         SparseArray<TextBlock> textBlocks = this.textRecognizer.detect(imageFrame);
 
         // iterate over TextBlocks looking for information
-        for (int i = 0; i < textBlocks.size(); i++)
+        for (int blockNum = 0; blockNum < textBlocks.size(); blockNum++)
         {
-            TextBlock textBlock = textBlocks.get(textBlocks.keyAt(i));
+            TextBlock textBlock = textBlocks.get(textBlocks.keyAt(blockNum));
             curBlockText = textBlock.getValue();
             lines = curBlockText.split("\n");
 
             // for start and end indices of identifiers
             int startChar, endChar;
 
-            for (String line : lines)
+            for(int lineNum = 0; lineNum < lines.length; lineNum++)
             {
+                String line = lines[lineNum];
+                Log.d(TAG, line);
+
+                // if this is the very first line of the receipt
+                if(blockNum == 0 && lineNum == 0)
+                {
+                    this.firstLine = line;
+                }
+
                 // check for dollar amounts
                 Matcher totalAmountMatcher = totalAmountPattern.matcher(line);
                 while (totalAmountMatcher.find())
@@ -115,7 +125,8 @@ public class ReceiptReader
                         {
                             this.highestDollarAmt = curAmnt;
                         }
-                    } catch (Exception e)
+                    }
+                    catch (Exception e)
                     {
                         Log.d(TAG, e.getMessage());
                     }
@@ -180,6 +191,31 @@ public class ReceiptReader
                     }
                 }
 
+                // check for "thank you for shopping at"
+                Matcher thankYouMatcher = thankYouPattern.matcher(line);
+                if(thankYouMatcher.find())
+                {
+                    endChar = thankYouMatcher.end();
+                    int lastChar = line.length();
+
+                    // The line must be sufficiently long to likely be a store name
+                    if(lastChar - endChar > 5)
+                    {
+                        this.textAfterThankYou = line.substring(endChar, lastChar);
+                    }
+                    // otherwise try to peak ahead at the next line
+                    else if(lineNum +1 < lines.length)
+                    {
+                        this.textAfterThankYou = lines[lineNum+1].trim();
+                    }
+                    // or the first line of the next block
+                    else if(blockNum+1 < textBlocks.size())
+                    {
+                        this.textAfterThankYou = textBlocks.get(blockNum+1).getValue().split("\n")[0];
+                    }
+
+                }
+
                 // check for a phone number
                 Matcher phoneMatcher = phonePattern.matcher(line);
                 while(phoneMatcher.find())
@@ -190,23 +226,9 @@ public class ReceiptReader
                 }
 
             }
-            // if it is the first block. Often, the first line is the name of the store
-            if (i == 0)
-            {
-                // get the first line
-                try
-                {
-                    this.firstLine = curBlockText.substring(0, curBlockText.indexOf('\n'));
-                }
-                catch (StringIndexOutOfBoundsException e)
-                {
-                    Log.d(TAG, " The first block of text didnt not contain a new line character. Taking the entire first block line as the first line.\n" + e.getMessage());
-                    this.firstLine = curBlockText;
-                }
-            }
         }
 
-        if(storeNameIsIdentifiable(this.firstLine))
+        if(this.firstLine != null)
         {
             addPossibleStore(dao.getStoreByKey(toKey(this.firstLine)));
         }
@@ -224,21 +246,35 @@ public class ReceiptReader
                 addPossibleStore(dao.getStoreByKey(toKey(phoneNum)));
             }
         }
+        if(this.textAfterThankYou != null)
+        {
+            addPossibleStore(this.textAfterThankYou);
+        }
 
         setMostLikelyStoreName();
+
+        // if we can't recover a store name from any of the receipt's identifiers, we guess
         if(this.storeName == null)
         {
-            if(this.urlList.size() > 0)
+            // first choice
+            if(this.textAfterThankYou != null)
             {
-                this.storeName = urlList.get(0);
+                this.storeName = this.textAfterThankYou;
             }
+            // second choice
             else if(this.firstLine != null)
             {
                 this.storeName = firstLine;
             }
+            // third choice
+            else if(this.urlList.size() > 0)
+            {
+                this.storeName = urlList.get(0);
+            }
+            // We have no idea...
             else
             {
-                this.storeName = "Store Name";
+                this.storeName = NO_NAME_FOUND_TEXT;
             }
         }
     }
@@ -268,7 +304,7 @@ public class ReceiptReader
     {
         if(storeNAme == null)
         {
-            return; //
+            return;
         }
 
         Integer numOccurrances = this.foundStores.get(storeNAme);
@@ -281,15 +317,6 @@ public class ReceiptReader
         {
             this.foundStores.put(storeNAme, ++numOccurrances);
         }
-    }
-
-    private boolean storeNameIsIdentifiable(String str)
-    {
-        if(dao.getStoreByKey(toKey(str)) != null)
-        {
-            return true;
-        }
-        return false;
     }
 
     public double getTotalAmount()

@@ -23,6 +23,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.DAO;
@@ -89,9 +90,10 @@ public class MainActivity extends AppCompatActivity
     {
         private List<Receipt> receiptList;
 
-        public ReceiptAdapter(List<Receipt> purchaseList)
+        public ReceiptAdapter(List<Receipt> receiptList)
         {
-            this.receiptList = purchaseList;
+            //Collections.reverse(receiptList);
+            this.receiptList = receiptList;
         }
 
         @NonNull
