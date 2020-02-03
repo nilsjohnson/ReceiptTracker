@@ -33,7 +33,7 @@ import coffee.nils.dev.receipts.data.DAO;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDBSchema;
 import coffee.nils.dev.receipts.util.ImageUtil;
-import coffee.nils.dev.receipts.util.ReceiptReader;
+import coffee.nils.dev.receipts.util.receiptReader.ReceiptReader;
 
 
 public class ReceiptActivity extends AppCompatActivity

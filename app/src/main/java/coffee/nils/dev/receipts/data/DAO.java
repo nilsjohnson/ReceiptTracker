@@ -223,13 +223,22 @@ public class DAO
         return new ReceiptCursorWrapper(cursor);
     }
 
-    public String getStoreByKey(String firstLine)
+    public String getStoreByKey(String key)
     {
-        return this.storeMap.get(firstLine);
+        if(key != null)
+        {
+            return this.storeMap.get(key);
+        }
+        return null;
     }
 
     public void addStoreNameKvPair(String storeKey, String storeName)
     {
+        if(storeKey == null || storeName == null)
+        {
+            return;
+        }
+
         this.storeMap.put(storeKey, storeName);
 
         ContentValues values = getStoreHashTableContentValues(new AbstractMap.SimpleEntry(storeKey, storeName));
