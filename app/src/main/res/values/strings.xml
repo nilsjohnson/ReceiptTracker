@@ -17,5 +17,6 @@
     <string name="delete">Delete</string>
     <string name="receipt_deleted">Receipt Deleted</string>
     <string name="are_you_sure_delete">Delete This Receipt?</string>
+    <string name="category">Category</string>
 
 </resources>

@@ -33,8 +33,9 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
                 "_id integer primary key autoincrement, " +
                 ReceiptTable.COLS.UUID + " INTEGER, " +
                 STORE_NAME + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
-                ReceiptTable.COLS.DATE + " INTEGER, " +
-                ReceiptTable.COLS.AMOUNT + " INTEGER, " +
+                ReceiptTable.COLS.DATE + " LONG, " +
+                ReceiptTable.COLS.AMOUNT + " DOUBLE, " +
+                ReceiptTable.COLS.CATEGORY + " varchar(" + MAX_FIELD_LENGTH_DEFAULT + "), " +
                 ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED + " INTEGER " +
                 ")"
         );
@@ -43,6 +44,13 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
                 "_id integer primary key autoincrement, " +
                 StoreNameHashTable.COLS.KEY + " varchar(" + StoreNameHashTable.MAX_FIELD_LENGTH_DEFAULT + "), " +
                 StoreNameHashTable.COLS.VALUE + " varchar(" + StoreNameHashTable.MAX_FIELD_LENGTH_DEFAULT + ") " +
+                ")"
+        );
+
+        db.execSQL("create table " + CategoryHashTable.NAME + "(" +
+                "_id integer primary key autoincrement, " +
+                CategoryHashTable.COLS.KEY + " varchar(" + CategoryHashTable.MAX_FIELD_LENGTH_DEFAULT + "), " +
+                CategoryHashTable.COLS.VALUE + " varchar(" + CategoryHashTable.MAX_FIELD_LENGTH_DEFAULT + ") " +
                 ")"
         );
 

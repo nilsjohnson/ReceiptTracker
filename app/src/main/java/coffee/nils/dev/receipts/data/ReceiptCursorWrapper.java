@@ -21,6 +21,7 @@ public class ReceiptCursorWrapper extends CursorWrapper
         double amount = getDouble(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.AMOUNT));
         long date = getLong(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.DATE));
         int isReviewed = getInt(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED));
+        String category = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.CATEGORY));
 
         Receipt receipt = new Receipt(UUID.fromString(uuidString));
 
@@ -28,14 +29,22 @@ public class ReceiptCursorWrapper extends CursorWrapper
         receipt.setTotalAmount(amount);
         receipt.setDate(new Date(date));
         receipt.setHasBeenReviewed(isReviewed != 0);
+        receipt.setCategory(category);
 
         return receipt;
     }
 
-    public AbstractMap.SimpleEntry getStoreKeyValue()
+    public AbstractMap.SimpleEntry getStoreKVpair()
     {
         String key = getString(getColumnIndex(ReceiptDBSchema.StoreNameHashTable.COLS.KEY));
         String value = getString(getColumnIndex(ReceiptDBSchema.StoreNameHashTable.COLS.VALUE));
+        return new AbstractMap.SimpleEntry(key, value);
+    }
+
+    public AbstractMap.SimpleEntry getCategoryKVpair()
+    {
+        String key = getString(getColumnIndex(ReceiptDBSchema.CategoryHashTable.COLS.KEY));
+        String value = getString(getColumnIndex(ReceiptDBSchema.CategoryHashTable.COLS.VALUE));
         return new AbstractMap.SimpleEntry(key, value);
     }
 }

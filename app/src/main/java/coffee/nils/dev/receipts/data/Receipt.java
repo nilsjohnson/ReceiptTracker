@@ -11,6 +11,7 @@ public class Receipt
     private double totalAmount;
     private Date date;
     private boolean hasBeenReviewd = false;
+    private String category;
 
     // defines how we show date to user
     public static final SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
@@ -80,10 +81,18 @@ public class Receipt
         this.hasBeenReviewd = val;
     }
 
-    // TODO, update database to reflect this name, instead of "isCropped"
     public boolean hasBeenReviewd()
     {
         return this.hasBeenReviewd;
     }
 
+    public void setCategory(String category)
+    {
+        this.category = category;
+    }
+
+    public String getCategory()
+    {
+        return this.category;
+    }
 }

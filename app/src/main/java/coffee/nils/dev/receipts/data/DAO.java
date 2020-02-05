@@ -28,14 +28,18 @@ public class DAO
     private static DAO dao;
 
     private Context context;
-    private List<Receipt> receiptList;
+    private ArrayList<Receipt> receiptList = new ArrayList<>();
+    private ArrayList<String> categoryList = new ArrayList<>();
     private SQLiteDatabase database;
 
-    private HashMap<String, String> storeMap;
+    // maps identifiers to store names
+    private HashMap<String, String> storeMap = new HashMap<>();
+    // maps store names to categories
+    private HashMap<String, String> categoryMap = new HashMap<>();
 
     public static DAO get(Context context)
     {
-        if ((dao == null))
+        if (dao == null)
         {
             dao = new DAO(context);
         }
@@ -48,17 +52,18 @@ public class DAO
         this.context = context.getApplicationContext();
         database = new ReceiptBaseHelper(context).getWritableDatabase();
 
-        receiptList = new ArrayList<>();
-        storeMap = new HashMap<String, String>();
-
         ReceiptCursorWrapper cursor = queryReceipts(null, null);
 
+        // load receipts from DB
         try
         {
             cursor.moveToFirst();
             while(!cursor.isAfterLast())
             {
-                receiptList.add(cursor.getReceipt());
+                Receipt r = cursor.getReceipt();
+                receiptList.add(r);
+                addCategory(r.getCategory());
+
                 cursor.moveToNext();
             }
         }
@@ -71,14 +76,14 @@ public class DAO
             cursor.close();
         }
 
+        // load the store name hash table from DB
         cursor = queryStoreNameHashTable(null, null);
-
         try
         {
             cursor.moveToFirst();
             while(!cursor.isAfterLast())
             {
-                AbstractMap.SimpleEntry kv = cursor.getStoreKeyValue();
+                AbstractMap.SimpleEntry kv = cursor.getStoreKVpair();
                 storeMap.put(kv.getKey().toString(), kv.getValue().toString());
                 cursor.moveToNext();
             }
@@ -91,6 +96,28 @@ public class DAO
         {
             cursor.close();
         }
+
+        // load the categoy hash table from DB
+        cursor = queryCategoryHashTable(null, null);
+        try
+        {
+            cursor.moveToFirst();
+            while(!cursor.isAfterLast())
+            {
+                AbstractMap.SimpleEntry kv = cursor.getStoreKVpair();
+                categoryMap.put(kv.getKey().toString(), kv.getValue().toString());
+                cursor.moveToNext();
+            }
+        }
+        catch(Exception e)
+        {
+            Log.e(TAG, "Problem reading in store name hash table.\n" + e.getMessage());
+        }
+        finally
+        {
+            cursor.close();
+        }
+
     }
 
     private static ContentValues getReceiptContentValues(Receipt receipt)
@@ -100,6 +127,7 @@ public class DAO
         values.put(ReceiptTable.COLS.STORE_NAME, receipt.getStoreName());
         values.put(ReceiptTable.COLS.AMOUNT, receipt.getTotalAmount());
         values.put(ReceiptTable.COLS.DATE, receipt.getDate().getTime());
+        values.put(ReceiptTable.COLS.CATEGORY, receipt.getCategory());
         values.put(ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED, receipt.hasBeenReviewd() ? 1 : 0);
 
         return values;
@@ -110,6 +138,15 @@ public class DAO
         ContentValues values = new ContentValues();
         values.put(StoreNameHashTable.COLS.KEY, entry.getKey().toString());
         values.put(StoreNameHashTable.COLS.VALUE, entry.getValue().toString());
+
+        return values;
+    }
+
+    public static ContentValues getCategoryHashTableContentValues(AbstractMap.SimpleEntry entry)
+    {
+        ContentValues values = new ContentValues();
+        values.put(CategoryHashTable.COLS.KEY, entry.getKey().toString());
+        values.put(CategoryHashTable.COLS.VALUE, entry.getValue().toString());
 
         return values;
     }
@@ -155,20 +192,13 @@ public class DAO
     public void updateReceipt(Receipt receipt)
     {
         String uuidString = receipt.getId().toString();
-
         ContentValues values = getReceiptContentValues(receipt);
 
         database.update(ReceiptTable.NAME, values, ReceiptTable.COLS.UUID + " = ?",
                 new String[]{uuidString});
 
-        for (Receipt r : receiptList)
-        {
-            if (r.getId().equals(receipt.getId()))
-            {
-                r = receipt;
-            }
-        }
-
+       addCategory(receipt.getCategory());
+       addStoreCategoryPair(receipt.getStoreName(), receipt.getCategory());
     }
 
     /**
@@ -237,6 +267,22 @@ public class DAO
         return new ReceiptCursorWrapper(cursor);
     }
 
+    private ReceiptCursorWrapper queryCategoryHashTable(String whereClause, String[] whereArgs)
+    {
+        Cursor cursor = database.query(
+                CategoryHashTable.NAME,
+                null, // selects all cols
+                whereClause,
+                whereArgs,
+                null,
+                null,
+                null
+        );
+;
+
+        return new ReceiptCursorWrapper(cursor);
+    }
+
     public String getStoreByKey(String key)
     {
         if(key != null)
@@ -283,5 +329,56 @@ public class DAO
                 break;
             }
         }
+    }
+
+    public ArrayList<String> getCategoryList()
+    {
+        return this.categoryList;
+    }
+
+    private void addCategory(String category)
+    {
+        if(category != null && !categoryList.contains(category))
+        {
+            categoryList.add(category);
+        }
+    }
+
+    private void addStoreCategoryPair(String storeName, String category)
+    {
+        ContentValues values = getCategoryHashTableContentValues(new AbstractMap.SimpleEntry(storeName, category));
+
+        // if this is a new kv pair
+        if(categoryMap.get(storeName) == null)
+        {
+            categoryMap.put(storeName, category);
+            database.insert(CategoryHashTable.NAME, null, values);
+            Log.d(TAG, "New entry to category map");
+        }
+        // if this is a update to a kv pair
+        else if(!categoryMap.get(storeName).equals(category))
+        {
+            categoryMap.put(storeName, category);
+            database.update(CategoryHashTable.NAME, values, CategoryHashTable.COLS.KEY + " + ?",
+                    new String[]{storeName});
+            Log.d(TAG, "Category map map updated");
+        }
+        else
+        {
+            Log.d(TAG, "Category map not updated");
+        }
+    }
+
+    /**
+     * @returns A suggested category for the store name, or null if it doesn't have one.
+     */
+    public String getCategory(String storeName)
+    {
+        if(storeName == null)
+        {
+            return null;
+        }
+
+        return categoryMap.get(storeName);
     }
 }
