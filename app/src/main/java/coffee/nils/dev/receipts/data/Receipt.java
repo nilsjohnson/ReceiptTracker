@@ -13,7 +13,7 @@ public class Receipt
     private boolean hasBeenReviewd = false;
 
     // defines how we show date to user
-    private static SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
+    public static final SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
 
     public Receipt()
     {

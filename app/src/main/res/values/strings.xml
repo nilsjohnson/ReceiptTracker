@@ -14,5 +14,8 @@
     <string name="subtype_generic">asdf</string>
     <string name="no_store_found">Please Enter Store Name</string>
     <string name="no_changes">No Changes Saved</string>
+    <string name="delete">Delete</string>
+    <string name="receipt_deleted">Receipt Deleted</string>
+    <string name="are_you_sure_delete">Delete This Receipt?</string>
 
 </resources>

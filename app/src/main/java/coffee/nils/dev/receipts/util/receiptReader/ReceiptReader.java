@@ -513,7 +513,7 @@ public class ReceiptReader
     /**
      *
      * @param storeName A string of text that is (hopefully) the name of a store
-     * @return The name of the store with the letters of first words capitalized.
+     * @return The name of the store with the letters of first words capitalized and no terminal points.
      */
     private String getStoreNameFormatted(String storeName)
     {
@@ -523,6 +523,7 @@ public class ReceiptReader
         }
 
         StringBuilder sb = new StringBuilder(storeName.trim());
+
 
         for(int i = 0; i < sb.length(); i++)
         {
@@ -543,7 +544,7 @@ public class ReceiptReader
             }
         }
 
-        return sb.toString();
+        return sb.toString().replaceAll("!", "");
     }
 }
 

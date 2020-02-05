@@ -36,9 +36,6 @@
                 <action android:name="android.service.textservice.SpellCheckerService" />
             </intent-filter>
 
-            <meta-data
-                android:name="android.view.textservice.scs"
-                android:resource="@xml/spellchecker" />
         </service>
 
 

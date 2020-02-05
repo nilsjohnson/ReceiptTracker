@@ -8,7 +8,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
-import android.view.textservice.SpellCheckerSession;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
@@ -58,9 +58,9 @@ public class ReceiptActivity extends AppCompatActivity
     private EditText editTextTotalAmount;
     private Button btnDate;
     private Button btnOk;
+    private Button btnDelete;
 
     private DAO dao;
-
 
     Receipt receipt;
     boolean receiptChanged = false;
@@ -68,9 +68,13 @@ public class ReceiptActivity extends AppCompatActivity
     boolean validAmount = true;
     boolean validDate = true;
 
-    // for spell checking
-    private SpellCheckerSession mScs;
-
+    // to hold the values from the user input fields
+    // we dont directly update the receipt, until the user
+    // presses save or the back button. This prevents the DB and the cache from
+    // being out of sync.
+    String storeName;
+    double totalAmount;
+    Date date;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -92,7 +96,7 @@ public class ReceiptActivity extends AppCompatActivity
 
                 if(name.length() < ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT)
                 {
-                    receipt.setStoreName(s.toString());
+                    storeName = s.toString();
                     editTextName.setBackgroundColor(Color.WHITE);
                     receiptChanged = true;
                     validName = true;
@@ -137,7 +141,7 @@ public class ReceiptActivity extends AppCompatActivity
                     }
 
                     double value = Double.parseDouble(value_str);
-                    receipt.setTotalAmount(value);
+                    totalAmount = value;
                     editTextTotalAmount.setBackgroundColor(Color.WHITE);
                     receiptChanged = true;
                     validAmount = true;
@@ -181,9 +185,9 @@ public class ReceiptActivity extends AppCompatActivity
                 Calendar cal = Calendar.getInstance();
                 cal.set(year, monthOfYear, dayOfMonth);
                 Date d = cal.getTime();
-                receipt.setDate(d);
+                date = d;
                 receiptChanged = true;
-                putDateOnButton();
+                putDateOnButton(d);
             }
         }
 
@@ -197,17 +201,22 @@ public class ReceiptActivity extends AppCompatActivity
             }
         }
 
-
+        class DeleteButtonListener implements View.OnClickListener
+        {
+            @Override
+            public void onClick(View v)
+            {
+                deleteReceipt();
+            }
+        }
 
         // set the view and get the DAO
         dao = DAO.get(this.getApplicationContext());
         setContentView(R.layout.activity_receipt);
 
-
         // get the reciept
         UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
         receipt = dao.getReceiptById(receiptId);
-
 
         photoFile = dao.getPhotoFile(receipt);
         Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
@@ -218,7 +227,6 @@ public class ReceiptActivity extends AppCompatActivity
         {
             Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)", Toast.LENGTH_SHORT);
             toast.show();
-
 
             Mat mat = new Mat();
             Utils.bitmapToMat(bitmap, mat);
@@ -252,11 +260,14 @@ public class ReceiptActivity extends AppCompatActivity
             toast.show();
         }
 
+        // initialize these so they get saved correctly if not changed
+        storeName = receipt.getStoreName();
+        date = receipt.getDate();
+        totalAmount = receipt.getTotalAmount();
+
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
         photoFile = dao.getPhotoFile(receipt);
-        // Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
         imageView.setImageBitmap(bitmap);
-
 
         // set the name related things
         editTextName = (EditText) findViewById(R.id.editText_name);
@@ -266,7 +277,7 @@ public class ReceiptActivity extends AppCompatActivity
         // set the date related things
         btnDate = (Button) findViewById(R.id.button_date);
         btnDate.setOnClickListener(new ChooseDateHandler());
-        putDateOnButton();
+        putDateOnButton(date);
 
         // set the receipt's total-amount related things
         double totalAmount = receipt.getTotalAmount();
@@ -279,6 +290,10 @@ public class ReceiptActivity extends AppCompatActivity
         // for the OK button
         btnOk = (Button) findViewById(R.id.button_ok);
         btnOk.setOnClickListener(new OkButtonListener());
+
+        // for the delete button
+        btnDelete = (Button) findViewById(R.id.button_delete);
+        btnDelete.setOnClickListener(new DeleteButtonListener());
     }
 
 
@@ -324,9 +339,9 @@ public class ReceiptActivity extends AppCompatActivity
         }
     }
 
-    private void putDateOnButton()
+    private void putDateOnButton(Date d)
     {
-        btnDate.setText(receipt.getSimpleDate());
+        btnDate.setText(Receipt.sdf.format(d));
     }
 
     private void saveReceipt()
@@ -346,6 +361,11 @@ public class ReceiptActivity extends AppCompatActivity
             // these must be valid before saving.
             if(validAmount && validName && validDate)
             {
+                // update the receipt
+                receipt.setTotalAmount(totalAmount);
+                receipt.setStoreName(storeName);
+                receipt.setDate(date);
+                // save it
                 dao.updateReceipt(receipt);
                 Toast toast = Toast.makeText(getApplicationContext(),R.string.saved,Toast. LENGTH_SHORT);
                 toast.show();
@@ -382,5 +402,33 @@ public class ReceiptActivity extends AppCompatActivity
                 builder.setMessage(R.string.check_fields).setPositiveButton(R.string.ok, dialogClickListener).show();
             }
         }
+    }
+
+    private void deleteReceipt()
+    {
+        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int choice)
+            {
+                switch (choice)
+                {
+                    case DialogInterface.BUTTON_POSITIVE:
+                        dao.deleteReceipt(receipt.getId());
+                        Toast toast = Toast.makeText(getApplicationContext(), R.string.receipt_deleted, Toast.LENGTH_SHORT);
+                        toast.show();
+                        finish();
+                        break;
+
+                    case DialogInterface.BUTTON_NEGATIVE:
+
+                        break;
+                }
+            }
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage(R.string.are_you_sure_delete).setPositiveButton(R.string.yes, dialogClickListener)
+                .setNegativeButton(R.string.no, dialogClickListener).show();
     }
 }

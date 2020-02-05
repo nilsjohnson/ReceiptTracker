@@ -100,7 +100,7 @@ public class DAO
         values.put(ReceiptTable.COLS.STORE_NAME, receipt.getStoreName());
         values.put(ReceiptTable.COLS.AMOUNT, receipt.getTotalAmount());
         values.put(ReceiptTable.COLS.DATE, receipt.getDate().getTime());
-        values.put(ReceiptTable.COLS.IMAGE_IS_CROPPED, receipt.hasBeenReviewd() ? 1 : 0);
+        values.put(ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED, receipt.hasBeenReviewd() ? 1 : 0);
 
         return values;
     }
@@ -137,7 +137,7 @@ public class DAO
         Receipt r = new Receipt();
         ContentValues values = getReceiptContentValues(r);
         database.insert(ReceiptTable.NAME, null, values);
-        receiptList.add(r);
+        receiptList.add(0, r);
         return r;
     }
 
@@ -190,6 +190,20 @@ public class DAO
         } catch (IOException e)
         {
             throw e;
+        }
+    }
+
+    public void deleteImage(String fileName)
+    {
+        File file = new File(context.getFilesDir().toString() + "/" + fileName);
+
+        if(file.delete())
+        {
+            Log.d(TAG, fileName + " deleted succesffuly");
+        }
+        else
+        {
+            Log.d(TAG, fileName + " failed to delete");
         }
     }
 
@@ -246,14 +260,6 @@ public class DAO
         printStoreNameHashTable();
     }
 
-    public void updateStoreNameValue(String key, String storeName)
-    {
-        ContentValues values = getStoreHashTableContentValues(new AbstractMap.SimpleEntry(key, storeName));
-
-        database.update(StoreNameHashTable.NAME, values, StoreNameHashTable.COLS.KEY + " = ?",
-                new String[]{key});
-    }
-
     private void printStoreNameHashTable()
     {
         StringBuilder table = new StringBuilder();
@@ -263,5 +269,19 @@ public class DAO
         }
 
         Log.d(TAG, table.toString());
+    }
+
+    public void deleteReceipt(UUID id)
+    {
+        for(int i = 0; i < receiptList.size(); i++)
+        {
+            if(receiptList.get(i).getId().equals(id))
+            {
+                database.delete(ReceiptTable.NAME, ReceiptTable.COLS.UUID + " = ?", new String[]{id.toString()});
+                deleteImage(receiptList.get(i).getFileName());
+                receiptList.remove(i);
+                break;
+            }
+        }
     }
 }

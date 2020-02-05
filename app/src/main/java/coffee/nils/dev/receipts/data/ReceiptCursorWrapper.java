@@ -20,14 +20,14 @@ public class ReceiptCursorWrapper extends CursorWrapper
         String storeName = getString(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.STORE_NAME));
         double amount = getDouble(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.AMOUNT));
         long date = getLong(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.DATE));
-        int isCropped = getInt(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.IMAGE_IS_CROPPED));
+        int isReviewed = getInt(getColumnIndex(ReceiptDBSchema.ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED));
 
         Receipt receipt = new Receipt(UUID.fromString(uuidString));
 
         receipt.setStoreName(storeName);
         receipt.setTotalAmount(amount);
         receipt.setDate(new Date(date));
-        receipt.setHasBeenReviewed(isCropped != 0);
+        receipt.setHasBeenReviewed(isReviewed != 0);
 
         return receipt;
     }
