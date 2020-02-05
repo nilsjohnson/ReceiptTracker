@@ -19,23 +19,65 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import coffee.nils.dev.receipts.R;
 import coffee.nils.dev.receipts.data.DAO;
 
 import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.DOMAIN;
 import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.FIRST_LINE;
 import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.TELPHONE;
 
+/**
+ * <b>Using ReceiptReader</b>
+ *
+ * Every time you wish to read a receipt, you need to make a new ReceiptReader(). The pattern to
+ * use this class is as follows:
+ *
+ * ReceiptReader reader = new ReceiptReader(image)
+ * String storeName = reader.getStoreName();
+ * Date date = reader.getDate();
+ * // continue for whatever values you want.
+ * // prompt user to confirm that the information is right, or enter the correct info
+ * reader.setStoreName(actualStoreName)
+ * reader.resolve(); // to help the reader do a better job next time.
+ *
+ * If a value was not found (with the exception of the store name), attempting to retrieve the value
+ * will return null.
+ *
+ * -----------------------------
+ *
+ * <b><How ReceiptReader works:/b>
+ *
+ * 'Identifiers', as referred to thought this class, are things that can link a receipt to a store.
+ * I.e - telephone numbers, web domains, a receipt's first line, or the text that comes after "Thank
+ * You For Shopping At".
+ *
+ * After the constructor is called, we parse the receipt line by line looking for identifiers. Two things
+ * can happen:
+ * 1.) We didn't find any identifiers. This happens if the app has never read a receipt from this store
+ * before. We guess the name store name. Then, when the user corrects the guess, or confirms it to
+ * be right, we need to call "resolve" to save all the found identifiers as belonging to the store.
+ * 2.) We found idnetifiers! ex -  (800) 767-7772 was on the receipt, and because the user has shopped
+ * here before, we can safely say this is a receipt from "Stop and Shop".
+ *
+ * Next, the class that called ReceiptReader can though public methods, access information off the receipt.
+ * Lastly, the calling class needs to call ReceiptReader.setActualStoreName() if the storeName is incorrect,
+ * and then ReceiptReader.resolve() to save the identifiers as belonging to the store.
+ */
 
 public class ReceiptReader
 {
-    // todo, get use R.id
-    private static final String NO_NAME_FOUND_TEXT = "Please Enter Store Name";
-    private static String TAG = "ReceiptReader";
+    private static final String TAG = "ReceiptReader";
     public static final int KEY_MAX_LENGTH = 20;
     public static final int KEY_MIN_LENGTH = 3;
 
+    private static Context context;
+
+    // the image of the receipt
     private Bitmap receiptImage;
-    private TextRecognizer textRecognizer;
+    // to read the text
+    TextRecognizer textRecognizer;
+
+    // to retrieve store names from identifiers
     private DAO dao;
 
     // values we want to find for the user
@@ -51,44 +93,41 @@ public class ReceiptReader
 
     // if an identifier gives us a store name, we add it to this hashmap
     // as <storeName, times identified>
-    HashMap<String, Integer> possibleStoreNames = new HashMap<>();
-    int highestNumMappings = 0;
+    private HashMap<String, Integer> possibleStoreNames = new HashMap<>();
+    private int highestNumMappings = 0;
+
+    // for matching total currency amount
+    private static final String totalAmntPattern_str = "([0-9]*['.'][0-9][0-9])";
+    private static final Pattern totalAmountPattern = Pattern.compile(totalAmntPattern_str);
+    // for matching dates
+    private static final String datePattern_str = "(\\d\\d?(\\/)\\d\\d?(\\/)(\\d{4}|\\d{2}))|\\d\\d?(-)\\d\\d?(-)(\\d{4}|\\d{2})";
+    Pattern datePattern = Pattern.compile(datePattern_str);
+    // for matching a website
+    private static final Pattern domainPattern = Patterns.DOMAIN_NAME;
+    // patern for matching a phone number
+    private static final String phonePattern_str = "(\\(?\\d{3}\\)?(\\s+|-)?\\d{3}(\\-|\\s+)\\d{4})|(\\(?\\d{3}\\)?(\\s+|-)\\d{3}(\\-|\\s+)?\\d{4})";
+    private static final Pattern phonePattern = Pattern.compile(phonePattern_str);
+    // pattern for finding "thank you for shopping at..."
+    private static final String thankYouPattern_str = "(Thank(s)?\\s+(you)?\\s+For\\s+Shopping(\\s+At)?)";
+    private static final Pattern thankYouPattern = Pattern.compile(thankYouPattern_str, Pattern.CASE_INSENSITIVE);
 
     public ReceiptReader(Bitmap image, Context context)
     {
         this.dao = DAO.get(context);
+        this.context = context;
         this.receiptImage = image;
         textRecognizer = new TextRecognizer.Builder(context).build();
         this.parse();
     }
 
     /**
-     * reads every line of the receipt saving each identifier
+     * Reads every line of the receipt saving each identifier
      */
     private void parse()
     {
         // for iterating over text
         String curBlockText;
         String[] lines;
-
-        // for matching total currency amount
-        String totalAmntPattern_str = "([0-9]*['.'][0-9][0-9])";
-        Pattern totalAmountPattern = Pattern.compile(totalAmntPattern_str);
-
-        // for matching dates
-        String datePattern_str = "(\\d\\d?(\\/)\\d\\d?(\\/)(\\d{4}|\\d{2}))|\\d\\d?(-)\\d\\d?(-)(\\d{4}|\\d{2})";
-        Pattern datePattern = Pattern.compile(datePattern_str);
-
-        // for matching a website
-        Pattern domainPattern = Patterns.DOMAIN_NAME;
-
-        // patern for matching a phone number
-        String phonePattern_str = "(\\(?\\d{3}\\)?(\\s+|-)?\\d{3}(\\-|\\s+)\\d{4})|(\\(?\\d{3}\\)?(\\s+|-)\\d{3}(\\-|\\s+)?\\d{4})";
-        Pattern phonePattern = Pattern.compile(phonePattern_str);
-
-        // pattern for finding "thank you for shopping at..."
-        String thankYouPattern_str = "(Thank(s)?\\s+(you)?\\s+For\\s+Shopping(\\s+At)?)";
-        Pattern thankYouPattern = Pattern.compile(thankYouPattern_str, Pattern.CASE_INSENSITIVE);
 
         // read the receipt into TextBlocks
         Frame imageFrame = new Frame.Builder().setBitmap(this.receiptImage).build();
@@ -316,7 +355,7 @@ public class ReceiptReader
         // if we have no idea...
         else
         {
-            this.storeName = NO_NAME_FOUND_TEXT;
+            this.storeName = this.context.getResources().getString(R.string.no_store_found);
         }
     }
 
@@ -400,7 +439,7 @@ public class ReceiptReader
     /**
      * @returns the first date found on receipt
      */
-    public Date getDate()
+    public Date getPurchaseDate()
     {
         if (this.purchaseDate != null)
         {

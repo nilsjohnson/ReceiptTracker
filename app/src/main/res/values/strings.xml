@@ -12,5 +12,7 @@
     <string name="ok">ok</string>
     <string name="spellchecker_name">storeNameSpellchecker</string>
     <string name="subtype_generic">asdf</string>
+    <string name="no_store_found">Please Enter Store Name</string>
+    <string name="no_changes">No Changes Saved</string>
 
 </resources>

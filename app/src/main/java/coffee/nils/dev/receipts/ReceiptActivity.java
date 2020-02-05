@@ -232,7 +232,7 @@ public class ReceiptActivity extends AppCompatActivity
             receiptReader = new ReceiptReader(bitmap, this);
             receipt.setStoreName(receiptReader.getStoreName());
             receipt.setTotalAmount(receiptReader.getTotalAmount());
-            receipt.setDate(receiptReader.getDate());
+            receipt.setDate(receiptReader.getPurchaseDate());
 
             toast = Toast.makeText(getApplicationContext(),"Please Review This Information", Toast.LENGTH_SHORT);
             toast.show();
@@ -299,7 +299,7 @@ public class ReceiptActivity extends AppCompatActivity
                             break;
 
                         case DialogInterface.BUTTON_NEGATIVE:
-                            Toast toast = Toast.makeText(getApplicationContext(), "No Changes Made", Toast.LENGTH_SHORT);
+                            Toast toast = Toast.makeText(getApplicationContext(), R.string.no_changes, Toast.LENGTH_SHORT);
                             toast.show();
                             finish();
                             break;
