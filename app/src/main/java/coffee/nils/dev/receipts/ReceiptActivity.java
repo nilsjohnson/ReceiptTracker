@@ -168,7 +168,6 @@ public class ReceiptActivity extends AppCompatActivity
 
                     validAmount = false;
                 }
-
             }
 
             @Override
@@ -221,12 +220,10 @@ public class ReceiptActivity extends AppCompatActivity
 
         class UpdateCategoryListener implements TextWatcher, AdapterView.OnItemClickListener
         {
-            private final ArrayList<String> categories;
             private ArrayAdapter<String> adapter;
 
             public UpdateCategoryListener(Context context, ArrayList<String> categories)
             {
-                this.categories = categories;
                 adapter = new ArrayAdapter<String>(context, android.R.layout.simple_dropdown_item_1line, categories);
                 autoCompleteTextViewCategory.setAdapter(adapter);
             }
@@ -245,18 +242,13 @@ public class ReceiptActivity extends AppCompatActivity
             @Override
             public void afterTextChanged(Editable s) { }
 
-
-
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3)
             {
-                Toast toast= Toast.makeText(getApplicationContext(),"On item click called", Toast.LENGTH_SHORT);
-                toast.show();
+                // hides keyboard after making choice
                 InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 in.hideSoftInputFromWindow(arg1.getApplicationWindowToken(), 0);
-
             }
-
         }
 
         // set the view and get the DAO
@@ -264,7 +256,7 @@ public class ReceiptActivity extends AppCompatActivity
         setContentView(R.layout.activity_receipt);
 
         // get the reciept
-        UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
+        UUID receiptId = (UUID) getIntent().getSerializableExtra(ReceiptListFragment.EXTRA_NEW_RECEIPT_ID);
         receipt = dao.getReceiptById(receiptId);
 
         // get the image
@@ -284,16 +276,12 @@ public class ReceiptActivity extends AppCompatActivity
         // if this is the first time showing reciept, autocrop and autofill it
         if(!receipt.hasBeenReviewd())
         {
-            Toast toast= Toast.makeText(getApplicationContext(),"Autocropping and saving Image :)", Toast.LENGTH_SHORT);
-            toast.show();
-
             Mat mat = new Mat();
             Utils.bitmapToMat(bitmap, mat);
             long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
             Mat cropped = new Mat(addr);
-            Bitmap forCropped = ImageUtil.getEmptyBitmap(cropped);
-            Utils.matToBitmap(cropped, forCropped);
-            bitmap = forCropped;
+            bitmap = ImageUtil.getEmptyBitmap(cropped);
+            Utils.matToBitmap(cropped, bitmap);
 
             // try to guess values;
             receiptReader = new ReceiptReader(bitmap, this);
@@ -301,7 +289,7 @@ public class ReceiptActivity extends AppCompatActivity
             receipt.setTotalAmount(receiptReader.getTotalAmount());
             receipt.setDate(receiptReader.getPurchaseDate());
 
-            toast = Toast.makeText(getApplicationContext(),"Please Review This Information", Toast.LENGTH_SHORT);
+            Toast toast = Toast.makeText(getApplicationContext(),"Please Review This Information", Toast.LENGTH_SHORT);
             toast.show();
 
             try
@@ -316,11 +304,6 @@ public class ReceiptActivity extends AppCompatActivity
             // try to figure out the category
             receipt.setCategory(dao.getCategory(receiptReader.getStoreName()));
 
-        }
-        else
-        {
-            Toast toast= Toast.makeText(getApplicationContext(),"Already AutoCropped!",Toast.LENGTH_SHORT);
-            toast.show();
         }
 
         // initialize these so they get saved correctly if not changed

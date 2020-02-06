@@ -346,6 +346,11 @@ public class DAO
 
     private void addStoreCategoryPair(String storeName, String category)
     {
+        if(storeName == null || category == null)
+        {
+            return;
+        }
+
         ContentValues values = getCategoryHashTableContentValues(new AbstractMap.SimpleEntry(storeName, category));
 
         // if this is a new kv pair

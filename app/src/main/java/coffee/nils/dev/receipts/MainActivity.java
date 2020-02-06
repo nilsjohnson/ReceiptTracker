@@ -6,11 +6,9 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -18,6 +16,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -25,8 +25,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.DAO;
@@ -41,96 +39,38 @@ public class MainActivity extends AppCompatActivity
         System.loadLibrary("opencv_java4");
     }
 
-    public native String stringFromJNI();
-
-    DAO dao;
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.newReceiptId";
+
     private FloatingActionButton fabAddReceipt;
-
-    // for the scrolling items
-    private RecyclerView recyclerView;
-    private ReceiptAdapter adaper;
-
-
-
-    private class ReceiptHolder extends RecyclerView.ViewHolder implements View.OnClickListener
-    {
-        private TextView textViewBusinessName;
-        private TextView textViewDate;
-        private TextView textViewAmount;
-
-        private Receipt receipt;
-
-        public ReceiptHolder(LayoutInflater inflater, ViewGroup parent)
-        {
-            super(inflater.inflate(R.layout.list_item, parent, false));
-            textViewBusinessName = (TextView) itemView.findViewById(R.id.textView_name);
-            textViewDate = (TextView) itemView.findViewById(R.id.textView_date);
-            textViewAmount = (TextView) itemView.findViewById(R.id.textView_amount);
-
-            itemView.setOnClickListener(this);
-        }
-
-        public void bind(Receipt receipt)
-        {
-            this.receipt = receipt;
-            if(receipt.getStoreName() != null)
-            {
-                textViewBusinessName.setText(receipt.getStoreName());
-            }
-
-            textViewDate.setText(receipt.getSimpleDate());
-        }
-
-        @Override
-        public void onClick(View view)
-        {
-            launchReceiptActivity(receipt);
-        }
-    }
-
-    private class ReceiptAdapter extends RecyclerView.Adapter<ReceiptHolder>
-    {
-        private List<Receipt> receiptList;
-
-        public ReceiptAdapter(List<Receipt> receiptList)
-        {
-            //Collections.reverse(receiptList);
-            this.receiptList = receiptList;
-        }
-
-        @NonNull
-        @Override
-        public ReceiptHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType)
-        {
-            LayoutInflater layoutInflater = LayoutInflater.from(getApplicationContext());
-            return new ReceiptHolder(layoutInflater, parent);
-        }
-
-        @Override
-        public void onBindViewHolder(@NonNull ReceiptHolder holder, int position)
-        {
-            Receipt purchase = receiptList.get(position);
-            holder.bind(purchase);
-        }
-
-        @Override
-        public int getItemCount()
-        {
-            return receiptList.size();
-        }
-    }
+    private DAO dao;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         dao = DAO.get(getApplicationContext());
+        FragmentManager fm = getSupportFragmentManager();
+        Fragment frag;
 
-        recyclerView = (RecyclerView)findViewById(R.id.recyclerView_receipts);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
+        if(dao.getReceiptList().size() > 0)
+        {
+            frag = fm.findFragmentById(R.id.frag_receipt_list);
+            if(frag == null)
+            {
+                frag = new ReceiptListFragment();
+            }
+        }
+        else
+        {
+            frag = fm.findFragmentById(R.id.frag_empty_list);
+            if(frag == null)
+            {
+                frag = new EmptyListFragment();
+            }
+        }
+
+        fm.beginTransaction().add(R.id.frag_container, frag).commit();
 
         fabAddReceipt = (FloatingActionButton) findViewById((R.id.fab_add_receipt));
         fabAddReceipt.setOnClickListener(new View.OnClickListener()
@@ -155,43 +95,8 @@ public class MainActivity extends AppCompatActivity
 
                 launchReceiptActivity(receipt);
                 startActivity(captureImage);
-
             }
         });
-
-        updateUI();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater inflater = getMenuInflater();
-        inflater.inflate(R.menu.filter, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle item selection
-        switch (item.getItemId()) {
-            case R.id.new_game:
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-    }
-
-    @Override
-    protected void onResume()
-    {
-        super.onResume();
-        updateUI();
-    }
-
-    private void updateUI()
-    {
-        List<Receipt> receiptList = dao.getReceiptList();
-        adaper = new ReceiptAdapter((receiptList));
-        recyclerView.setAdapter(adaper);
     }
 
     private void launchReceiptActivity(Receipt receipt)

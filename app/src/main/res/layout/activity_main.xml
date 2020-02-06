@@ -10,12 +10,10 @@
     android:layout_marginBottom="14dp"
     tools:context=".MainActivity">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView_receipts"
+    <FrameLayout
+        android:id="@+id/frag_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:stackFromEnd="true"
-        app:reverseLayout="true"/>
+        android:layout_height="match_parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_receipt"
