@@ -1,26 +1,19 @@
 package coffee.nils.dev.receipts;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
+import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -33,13 +26,9 @@ import coffee.nils.dev.receipts.data.Receipt;
 public class MainActivity extends AppCompatActivity
 {
     private static String TAG = "MainActivity";
+    Fragment curFrag;
 
-    static {
-        System.loadLibrary("native-lib");
-        System.loadLibrary("opencv_java4");
-    }
-
-    public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.newReceiptId";
+    public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
 
     private FloatingActionButton fabAddReceipt;
     private DAO dao;
@@ -48,29 +37,9 @@ public class MainActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate called");
         setContentView(R.layout.activity_main);
         dao = DAO.get(getApplicationContext());
-        FragmentManager fm = getSupportFragmentManager();
-        Fragment frag;
-
-        if(dao.getReceiptList().size() > 0)
-        {
-            frag = fm.findFragmentById(R.id.frag_receipt_list);
-            if(frag == null)
-            {
-                frag = new ReceiptListFragment();
-            }
-        }
-        else
-        {
-            frag = fm.findFragmentById(R.id.frag_empty_list);
-            if(frag == null)
-            {
-                frag = new EmptyListFragment();
-            }
-        }
-
-        fm.beginTransaction().add(R.id.frag_container, frag).commit();
 
         fabAddReceipt = (FloatingActionButton) findViewById((R.id.fab_add_receipt));
         fabAddReceipt.setOnClickListener(new View.OnClickListener()
@@ -93,16 +62,69 @@ public class MainActivity extends AppCompatActivity
                     getApplicationContext().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 }
 
-                launchReceiptActivity(receipt);
+                launchReceiptActivity(receipt, getApplicationContext());
                 startActivity(captureImage);
             }
         });
     }
 
-    private void launchReceiptActivity(Receipt receipt)
+    @Override
+    public void onStart()
     {
-        Intent intent = new Intent(getApplicationContext(), ReceiptActivity.class);
+        super.onStart();
+        Log.d(TAG, "on start called");
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        Log.d(TAG, "on resume called");
+        FragmentManager fm = getSupportFragmentManager();
+
+
+        if(dao.getReceiptList().size() > 0)
+        {
+            curFrag = fm.findFragmentById(R.id.frag_receipt_list);
+            if(curFrag == null)
+            {
+                curFrag = new ReceiptListFragment();
+            }
+        }
+        else
+        {
+            curFrag = fm.findFragmentById(R.id.frag_empty_list);
+            if(curFrag == null)
+            {
+                curFrag = new EmptyListFragment();
+            }
+        }
+
+        fm.beginTransaction().replace(R.id.frag_container, curFrag).commit();
+    }
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        Log.d(TAG, "on pause called");
+    }
+    @Override
+    public void onStop()
+    {
+        super.onStop();
+        Log.d(TAG, "on stop called");
+    }
+    @Override
+    public void onDestroy()
+    {
+        super.onDestroy();
+        Log.d(TAG, "on destroy called");
+    }
+
+    public static void launchReceiptActivity(Receipt receipt, Context context )
+    {
+        Intent intent = new Intent(context, ReceiptActivity.class);
         intent.putExtra(EXTRA_NEW_RECEIPT_ID, receipt.getId());
-        startActivity(intent);
+        context.startActivity(intent);
     }
 }

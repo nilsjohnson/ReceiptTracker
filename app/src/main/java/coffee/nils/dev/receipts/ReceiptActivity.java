@@ -256,7 +256,7 @@ public class ReceiptActivity extends AppCompatActivity
         setContentView(R.layout.activity_receipt);
 
         // get the reciept
-        UUID receiptId = (UUID) getIntent().getSerializableExtra(ReceiptListFragment.EXTRA_NEW_RECEIPT_ID);
+        UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
         receipt = dao.getReceiptById(receiptId);
 
         // get the image
