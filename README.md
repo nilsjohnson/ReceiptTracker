@@ -8,7 +8,7 @@ In the root directory, I have included an APK if you simply wish to run the app.
 
 This app uses [OpenCV - 4.2](https://opencv.org/releases/ "OpenCV Android"). Download the Android SDK to your system if you don't have it.
 
-First, download the library. Then open src/main/cpp/CmakeLists.txt and edit the lines
+Then open src/main/cpp/CmakeLists.txt and edit the lines
 
 ```
 set(pathToProject /home/nils/AndroidStudioProjects/Receipts)
