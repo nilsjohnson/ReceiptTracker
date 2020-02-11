@@ -6,7 +6,7 @@ In the root directory, I have included an APK if you simply wish to run the app.
 
 ## Getting Started
 
-[This app uses the OpenCV c++ library.](https://sourceforge.net/projects/opencvlibrary/files/4.2.0/opencv-4.2.0-android-sdk.zip/download "OpenCV Android")
+[This app uses OpenCV.](https://sourceforge.net/projects/opencvlibrary/files/4.2.0/opencv-4.2.0-android-sdk.zip/download "OpenCV Android")
 
 First, download the library. Then open src/main/cpp/CmakeLists.txt and edit the lines
 
