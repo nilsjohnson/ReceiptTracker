@@ -9,8 +9,12 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.Filter;
+
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -23,10 +27,12 @@ import java.util.List;
 import coffee.nils.dev.receipts.data.DAO;
 import coffee.nils.dev.receipts.data.Receipt;
 
-public class MainActivity extends AppCompatActivity
+public class MainActivity extends AppCompatActivity implements FilterFragment.OnFragmentInteractionListener
 {
     private static String TAG = "MainActivity";
     Fragment curFrag;
+    Toolbar toolbar;
+    EditText searchText;
 
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
 
@@ -40,6 +46,18 @@ public class MainActivity extends AppCompatActivity
         Log.d(TAG, "onCreate called");
         setContentView(R.layout.activity_main);
         dao = DAO.get(getApplicationContext());
+
+        toolbar = (Toolbar) findViewById(R.id.toolbar_main);
+        searchText = (EditText) findViewById(R.id.editText_search);
+        searchText.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                FragmentManager fm = getSupportFragmentManager();
+                fm.beginTransaction().replace(R.id.filter_container, FilterFragment.newInstance("", "")).commit();
+            }
+        });
 
         fabAddReceipt = (FloatingActionButton) findViewById((R.id.fab_add_receipt));
         fabAddReceipt.setOnClickListener(new View.OnClickListener()
@@ -126,5 +144,11 @@ public class MainActivity extends AppCompatActivity
         Intent intent = new Intent(context, ReceiptActivity.class);
         intent.putExtra(EXTRA_NEW_RECEIPT_ID, receipt.getId());
         context.startActivity(intent);
+    }
+
+    @Override
+    public void onFragmentInteraction(Uri uri)
+    {
+        
     }
 }
