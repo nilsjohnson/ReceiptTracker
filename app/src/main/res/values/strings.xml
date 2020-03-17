@@ -27,5 +27,7 @@
     <string name="action_settings">action settings!</string>
     <string name="export">Export</string>
     <string name="filter_title">Add Filter</string>
+    <string name="remove_filter">Remove</string>
+    <string name="apply_filter">Apply</string>
 
 </resources>

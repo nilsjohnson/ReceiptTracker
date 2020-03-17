@@ -177,7 +177,6 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         {
             dao.setFilter(filter);
 
-
             FragmentManager fm = getSupportFragmentManager();
 
             ReceiptListFragment frag = new ReceiptListFragment();
@@ -192,5 +191,14 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         {
             Log.e(TAG, e.getMessage());
         }
+    }
+
+    @Override
+    public void removeFilter()
+    {
+        FragmentManager fm = getSupportFragmentManager();
+
+        ReceiptListFragment frag = new ReceiptListFragment();
+        fm.beginTransaction().replace(R.id.frag_container, frag).commit();
     }
 }

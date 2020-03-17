@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Date;
@@ -44,7 +43,7 @@ public class DAO
     private HashMap<String, String> categoryMap = new HashMap<>();
 
     private Receipt lowestDateReceipt;
-    private Receipt highestDateReceip;
+    private Receipt highestDateReceipDate;
 
     public static DAO get(Context context)
     {
@@ -147,9 +146,9 @@ public class DAO
     {
         if(receipt.getDate() != null)
         {
-            if(this.highestDateReceip == null || receipt.getDate().getTime() > this.highestDateReceip.getDate().getTime())
+            if(this.highestDateReceipDate == null || receipt.getDate().getTime() > this.highestDateReceipDate.getDate().getTime())
             {
-                this.highestDateReceip = receipt;
+                this.highestDateReceipDate = receipt;
             }
 
             if(this.lowestDateReceipt == null || receipt.getDate().getTime() < this.lowestDateReceipt.getDate().getTime())
@@ -249,7 +248,7 @@ public class DAO
 
        // if the receipt was the highest or lowest, we now no longe
         // can trust our high low flags, so unfortunetly we have to recheck each one
-       if(receipt == highestDateReceip || receipt == lowestDateReceipt)
+       if(receipt == highestDateReceipDate || receipt == lowestDateReceipt)
        {
             resetHighestHowestDates();
        }
@@ -265,14 +264,14 @@ public class DAO
      */
     private void resetHighestHowestDates()
     {
-        highestDateReceip = null;
+        highestDateReceipDate = null;
         lowestDateReceipt = null;
 
         for (Receipt receipt : receiptList)
         {
-            if(highestDateReceip == null || receipt.getDate().after(highestDateReceip.getDate()))
+            if(highestDateReceipDate == null || receipt.getDate().after(highestDateReceipDate.getDate()))
             {
-                highestDateReceip = receipt;
+                highestDateReceipDate = receipt;
             }
             if(lowestDateReceipt == null || receipt.getDate().before(lowestDateReceipt.getDate()))
             {
@@ -469,7 +468,7 @@ public class DAO
 
     public Date getHighestDate()
     {
-        return highestDateReceip.getDate();
+        return highestDateReceipDate.getDate();
     }
 
     public Date getLowestDate()
@@ -510,5 +509,10 @@ public class DAO
     public void removeFilter()
     {
         this.filter = null;
+    }
+
+    public Filter getFilter()
+    {
+        return this.filter;
     }
 }
