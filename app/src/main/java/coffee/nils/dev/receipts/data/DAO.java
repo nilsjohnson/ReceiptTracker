@@ -11,13 +11,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
+
+// TODO min/max with deletes
 
 /**
  * This singleton manages all the data for this app.
@@ -28,14 +32,19 @@ public class DAO
     private static DAO dao;
 
     private Context context;
+    private Filter filter;
     private ArrayList<Receipt> receiptList = new ArrayList<>();
     private ArrayList<String> categoryList = new ArrayList<>();
+    private ArrayList<Receipt> filteredReceiptList = new ArrayList<>();
     private SQLiteDatabase database;
 
     // maps identifiers to store names
     private HashMap<String, String> storeMap = new HashMap<>();
     // maps store names to categories
     private HashMap<String, String> categoryMap = new HashMap<>();
+
+    private Receipt lowestDateReceipt;
+    private Receipt highestDateReceip;
 
     public static DAO get(Context context)
     {
@@ -61,7 +70,8 @@ public class DAO
             while(!cursor.isAfterLast())
             {
                 Receipt r = cursor.getReceipt();
-                receiptList.add(r);
+                //receiptList.add(r);
+                addReceipt(r);
                 addCategory(r.getCategory());
 
                 cursor.moveToNext();
@@ -120,6 +130,35 @@ public class DAO
 
     }
 
+    /**
+     *
+     * @param receipt to add to list. Does not insert into database.
+     */
+    private void addReceipt(Receipt receipt)
+    {
+        checkHighLowDates(receipt);
+        this.receiptList.add(receipt);
+    }
+
+    /**
+     * @param receipt to check and set as either min or/and max, with respect to date.
+     */
+    private void checkHighLowDates(Receipt receipt)
+    {
+        if(receipt.getDate() != null)
+        {
+            if(this.highestDateReceip == null || receipt.getDate().getTime() > this.highestDateReceip.getDate().getTime())
+            {
+                this.highestDateReceip = receipt;
+            }
+
+            if(this.lowestDateReceipt == null || receipt.getDate().getTime() < this.lowestDateReceipt.getDate().getTime())
+            {
+                this.lowestDateReceipt = receipt;
+            }
+        }
+    }
+
     private static ContentValues getReceiptContentValues(Receipt receipt)
     {
         ContentValues values = new ContentValues();
@@ -153,7 +192,15 @@ public class DAO
 
     public List<Receipt> getReceiptList()
     {
-        return this.receiptList;
+        if(filter == null)
+        {
+            return this.receiptList;
+        }
+        else
+        {
+            return this.filteredReceiptList;
+        }
+
     }
 
     public Receipt getReceiptById(UUID id)
@@ -199,6 +246,39 @@ public class DAO
 
        addCategory(receipt.getCategory());
        addStoreCategoryPair(receipt.getStoreName(), receipt.getCategory());
+
+       // if the receipt was the highest or lowest, we now no longe
+        // can trust our high low flags, so unfortunetly we have to recheck each one
+       if(receipt == highestDateReceip || receipt == lowestDateReceipt)
+       {
+            resetHighestHowestDates();
+       }
+       else
+       {
+           checkHighLowDates(receipt);
+       }
+
+    }
+
+    /**
+     * iterates over entire receipt list to set the highest and lowest.
+     */
+    private void resetHighestHowestDates()
+    {
+        highestDateReceip = null;
+        lowestDateReceipt = null;
+
+        for (Receipt receipt : receiptList)
+        {
+            if(highestDateReceip == null || receipt.getDate().after(highestDateReceip.getDate()))
+            {
+                highestDateReceip = receipt;
+            }
+            if(lowestDateReceipt == null || receipt.getDate().before(lowestDateReceipt.getDate()))
+            {
+                lowestDateReceipt = receipt;
+            }
+        }
     }
 
     /**
@@ -385,5 +465,50 @@ public class DAO
         }
 
         return categoryMap.get(storeName);
+    }
+
+    public Date getHighestDate()
+    {
+        return highestDateReceip.getDate();
+    }
+
+    public Date getLowestDate()
+    {
+        return lowestDateReceipt.getDate();
+    }
+
+    private List<Receipt> setFilteredList()
+    {
+        Date startDate = filter.startDate;
+        Date endDate = filter.endDate;
+
+        filteredReceiptList = new ArrayList<>();
+
+        for (Receipt r : receiptList)
+        {
+            // using ! to make this inclusive
+            if (!r.getDate().before(startDate) && !r.getDate().after(endDate))
+            {
+                filteredReceiptList.add(r);
+            }
+        }
+
+        return filteredReceiptList;
+    }
+
+    public void setFilter(Filter filter) throws Exception
+    {
+        if(filter.startDate == null || filter.endDate == null)
+        {
+            throw new Exception("All filter fields must be specified");
+        }
+
+        this.filter = filter;
+        setFilteredList();
+    }
+
+    public void removeFilter()
+    {
+        this.filter = null;
     }
 }

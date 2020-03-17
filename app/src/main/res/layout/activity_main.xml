@@ -2,70 +2,53 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/coordinatorLayout2"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context=".MainActivity"
-    android:id="@+id/linearLayout3">
+    tools:context=".MainActivity">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar_main"
-        android:layout_width="match_parent"
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout2"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/colorPrimary"
+        android:theme="@style/AppTheme.AppBarOverlay"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-
-        <EditText
-            android:id="@+id/editText_search"
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="textPersonName"
-            android:text="Name"
-            tools:layout_editor_absoluteX="16dp"
-            tools:layout_editor_absoluteY="5dp"
-            tools:text='Search: "Home Depot"' />
+            android:background="?attr/colorPrimary"
+            app:popupTheme="@style/AppTheme.PopupOverlay" />
 
-    </androidx.appcompat.widget.Toolbar>
+    </com.google.android.material.appbar.AppBarLayout>
 
-
-    <FrameLayout
-        android:id="@+id/filter_container"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/toolbar_main">
-
-    </FrameLayout>
 
     <FrameLayout
         android:id="@+id/frag_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:paddingLeft="12dp"
-        android:paddingTop="12dp"
-        android:paddingRight="12dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/filter_container" />
+        app:layout_constraintTop_toBottomOf="@+id/appBarLayout2">
+
+    </FrameLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fab_add_receipt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginRight="36dp"
-        android:layout_marginBottom="36dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:src="@android:drawable/ic_menu_camera"
+        android:layout_marginEnd="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        tools:layout_conversion_absoluteHeight="56dp"
-        tools:layout_conversion_absoluteWidth="56dp" />
+        app:srcCompat="@android:drawable/ic_dialog_email" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

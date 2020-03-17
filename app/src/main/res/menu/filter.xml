@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/ggg"
-        android:icon="@drawable/ic_reorder_black_24dp"
-        android:title="Filter1"
-        app:showAsAction="ifRoom" />
-</menu>

@@ -1,0 +1,15 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="coffee.nils.dev.myapplication.MainActivity">
+    <item
+        android:id="@+id/action_filter"
+        android:orderInCategory="100"
+        android:title="@string/filter"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_export"
+        android:orderInCategory="100"
+        android:title="@string/export"
+        app:showAsAction="never" />
+</menu>

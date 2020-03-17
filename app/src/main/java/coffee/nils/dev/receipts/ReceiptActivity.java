@@ -2,6 +2,7 @@ package coffee.nils.dev.receipts;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -182,7 +183,7 @@ public class ReceiptActivity extends AppCompatActivity
             public void onClick(View v)
             {
                 FragmentManager manager = getSupportFragmentManager();
-                DatePickerFragment dialog = DatePickerFragment.newInstance(new Date(), this);
+                DatePickerFragment dialog = DatePickerFragment.newInstance(date, this);
                 dialog.show(manager, DIALOG_DATE);
             }
 
@@ -494,5 +495,12 @@ public class ReceiptActivity extends AppCompatActivity
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(R.string.are_you_sure_delete).setPositiveButton(R.string.yes, dialogClickListener)
                 .setNegativeButton(R.string.no, dialogClickListener).show();
+    }
+
+    @Override
+    public void onActivityResult(int reqCode, int resultCode, Intent data)
+    {
+
+        super.onActivityResult(reqCode, resultCode, data);
     }
 }

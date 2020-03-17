@@ -8,10 +8,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.Filter;
-
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -21,18 +20,19 @@ import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+
 import java.io.File;
+import java.util.Date;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.Filter;
 import coffee.nils.dev.receipts.data.Receipt;
 
-public class MainActivity extends AppCompatActivity implements FilterFragment.OnFragmentInteractionListener
+public class MainActivity extends AppCompatActivity implements FilterDialogFragment.OnRangeChangeListener
 {
     private static String TAG = "MainActivity";
     Fragment curFrag;
-    Toolbar toolbar;
-    EditText searchText;
 
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
 
@@ -47,19 +47,11 @@ public class MainActivity extends AppCompatActivity implements FilterFragment.On
         setContentView(R.layout.activity_main);
         dao = DAO.get(getApplicationContext());
 
-        toolbar = (Toolbar) findViewById(R.id.toolbar_main);
-        searchText = (EditText) findViewById(R.id.editText_search);
-        searchText.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                FragmentManager fm = getSupportFragmentManager();
-                fm.beginTransaction().replace(R.id.filter_container, FilterFragment.newInstance("", "")).commit();
-            }
-        });
 
-        fabAddReceipt = (FloatingActionButton) findViewById((R.id.fab_add_receipt));
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        fabAddReceipt = (FloatingActionButton) findViewById(R.id.fab_add_receipt);
         fabAddReceipt.setOnClickListener(new View.OnClickListener()
         {
             @Override
@@ -147,8 +139,58 @@ public class MainActivity extends AppCompatActivity implements FilterFragment.On
     }
 
     @Override
-    public void onFragmentInteraction(Uri uri)
+    public boolean onCreateOptionsMenu(Menu menu)
     {
-        
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_filter)
+        {
+            //final String TEMP = "asdf";
+            FragmentManager fm = getSupportFragmentManager();
+            FilterDialogFragment frag = FilterDialogFragment.newInstance(dao.getLowestDate(), dao.getHighestDate());
+            frag.show(fm, FilterDialogFragment.TAG);
+
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onRangeChange(Date startDate, Date endDate)
+    {
+        Log.d(TAG, "Start Date: " + startDate.toString() + ", End Date: " + endDate);
+        Filter filter = new Filter(startDate, endDate);
+        try
+        {
+            dao.setFilter(filter);
+
+
+            FragmentManager fm = getSupportFragmentManager();
+
+            ReceiptListFragment frag = new ReceiptListFragment();
+            fm.beginTransaction().replace(R.id.frag_container, frag).commit();
+
+            for(Receipt r : dao.getReceiptList())
+            {
+                Log.d(TAG, r.toString());
+            }
+        }
+        catch (Exception e)
+        {
+            Log.e(TAG, e.getMessage());
+        }
     }
 }

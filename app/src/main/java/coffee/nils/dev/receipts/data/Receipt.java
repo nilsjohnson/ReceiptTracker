@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
+// TODO remove sdf field from this class and use DateTools
 public class Receipt
 {
     private UUID id;
@@ -94,5 +95,14 @@ public class Receipt
     public String getCategory()
     {
         return this.category;
+    }
+
+    @Override
+    public String toString()
+    {
+        String str = "Date: " + this.date.toString() + "\n" +
+                "Store: " + this.storeName + "\n";
+
+        return str;
     }
 }
