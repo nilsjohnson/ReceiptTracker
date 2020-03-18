@@ -18,7 +18,7 @@ import com.crystal.crystalrangeseekbar.widgets.CrystalRangeSeekbar;
 
 import java.util.Date;
 
-import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.util.DateTools;
 
 import static coffee.nils.dev.receipts.util.DateTools.setToEndOfDay;
@@ -40,7 +40,7 @@ public class FilterDialogFragment extends DialogFragment
     Date selectedMinDate;
     Date selectedMaxDate;
 
-    DAO dao = DAO.get(this.getActivity());
+    ReceiptDAO dao = ReceiptDAO.get(this.getActivity());
 
 
     public static FilterDialogFragment newInstance(Date minDate, Date maxDate)
@@ -114,7 +114,7 @@ public class FilterDialogFragment extends DialogFragment
                         break;
                     // TODO no negative button
                     case DialogInterface.BUTTON_NEGATIVE:
-                        DAO.get(getContext()).removeFilter();
+                        ReceiptDAO.get(getContext()).removeFilter();
                         rangeChangeListner.removeFilter();
                         Log.d(TAG, "Filter Removed.");
                 }

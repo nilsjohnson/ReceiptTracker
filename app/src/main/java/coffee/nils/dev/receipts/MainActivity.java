@@ -25,7 +25,7 @@ import java.io.File;
 import java.util.Date;
 import java.util.List;
 
-import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Filter;
 import coffee.nils.dev.receipts.data.Receipt;
 
@@ -37,7 +37,8 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
 
     private FloatingActionButton fabAddReceipt;
-    private DAO dao;
+    private ReceiptDAO dao;
+    private Toolbar toolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -45,10 +46,10 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate called");
         setContentView(R.layout.activity_main);
-        dao = DAO.get(getApplicationContext());
+        dao = ReceiptDAO.get(getApplicationContext());
 
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar = findViewById(R.id.toolbar_main_menu);
         setSupportActionBar(toolbar);
 
         fabAddReceipt = (FloatingActionButton) findViewById(R.id.fab_add_receipt);
@@ -142,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
     public boolean onCreateOptionsMenu(Menu menu)
     {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main_menu, menu);
+        getMenuInflater().inflate(R.menu.receipt_menu, menu);
         return true;
     }
 
@@ -157,12 +158,7 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_filter)
         {
-            //final String TEMP = "asdf";
-            FragmentManager fm = getSupportFragmentManager();
-            FilterDialogFragment frag = FilterDialogFragment.newInstance(dao.getLowestDate(), dao.getHighestDate());
-            frag.show(fm, FilterDialogFragment.TAG);
 
-            return true;
         }
 
         return super.onOptionsItemSelected(item);

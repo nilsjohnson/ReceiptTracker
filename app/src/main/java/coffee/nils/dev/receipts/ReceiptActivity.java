@@ -5,12 +5,13 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.text.method.Touch;
 import android.util.Log;
-import android.view.MotionEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -22,8 +23,10 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.appcompat.widget.Toolbar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentManager;
 
 import org.opencv.android.Utils;
@@ -31,15 +34,18 @@ import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.UUID;
 
-import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDBSchema;
+import coffee.nils.dev.receipts.util.DateTools;
 import coffee.nils.dev.receipts.util.ImageUtil;
 import coffee.nils.dev.receipts.util.receiptReader.ReceiptReader;
 
@@ -62,6 +68,7 @@ public class ReceiptActivity extends AppCompatActivity
     private ImageView imageView;
     private File photoFile;
 
+    private Toolbar toolbar;
     private EditText editTextName;
     private EditText editTextTotalAmount;
     private Button btnDate;
@@ -69,7 +76,7 @@ public class ReceiptActivity extends AppCompatActivity
     private Button btnDelete;
     private AutoCompleteTextView autoCompleteTextViewCategory;
 
-    private DAO dao;
+    private ReceiptDAO dao;
 
     Receipt receipt;
     boolean receiptChanged = false;
@@ -252,8 +259,8 @@ public class ReceiptActivity extends AppCompatActivity
             }
         }
 
-        // set the view and get the DAO
-        dao = DAO.get(this.getApplicationContext());
+        // set the view and get the ReceiptDAO
+        dao = ReceiptDAO.get(this.getApplicationContext());
         setContentView(R.layout.activity_receipt);
 
         // get the reciept
@@ -296,6 +303,7 @@ public class ReceiptActivity extends AppCompatActivity
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
+                bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
             }
             catch (IOException e)
             {
@@ -313,6 +321,12 @@ public class ReceiptActivity extends AppCompatActivity
         totalAmount = receipt.getTotalAmount();
         category = receipt.getCategory();
 
+        // set the toolbar
+        // setup the toolbar
+        toolbar = findViewById(R.id.toolbar_receipt);
+        setSupportActionBar(toolbar);
+
+        // set the ImageView
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
         photoFile = dao.getPhotoFile(receipt);
         imageView.setImageBitmap(bitmap);
@@ -398,7 +412,7 @@ public class ReceiptActivity extends AppCompatActivity
 
     private void putDateOnButton(Date d)
     {
-        btnDate.setText(Receipt.sdf.format(d));
+        btnDate.setText(DateTools.toSimpleFormat(receipt.getDate()));
     }
 
     private void saveReceipt()
@@ -495,6 +509,40 @@ public class ReceiptActivity extends AppCompatActivity
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setMessage(R.string.are_you_sure_delete).setPositiveButton(R.string.yes, dialogClickListener)
                 .setNegativeButton(R.string.no, dialogClickListener).show();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu)
+    {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.receipt_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item)
+    {
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_share)
+        {
+                Uri imageUri = FileProvider.getUriForFile(this, dao.FILES_AUTHORITY, photoFile);
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setAction(Intent.ACTION_SEND);
+                intent.putExtra(Intent.EXTRA_STREAM, imageUri);
+                intent.setType("image/jpeg");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                startActivity(Intent.createChooser(intent, getResources().getText(R.string.send_to)));
+
+
+
+
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override

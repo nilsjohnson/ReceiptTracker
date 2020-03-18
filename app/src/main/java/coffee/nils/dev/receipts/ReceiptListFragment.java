@@ -14,8 +14,9 @@ import android.widget.TextView;
 
 import java.util.List;
 
-import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
+import coffee.nils.dev.receipts.util.DateTools;
 
 
 /**
@@ -23,7 +24,7 @@ import coffee.nils.dev.receipts.data.Receipt;
  */
 public class ReceiptListFragment extends Fragment
 {
-    private DAO dao;
+    private ReceiptDAO dao;
 
     // for the scrolling items
     private RecyclerView recyclerView;
@@ -58,7 +59,7 @@ public class ReceiptListFragment extends Fragment
                 textViewBusinessName.setText(receipt.getStoreName());
             }
 
-            textViewDate.setText(receipt.getSimpleDate());
+            textViewDate.setText(DateTools.toSimpleFormat(receipt.getDate()));
         }
 
         @Override
@@ -102,7 +103,7 @@ public class ReceiptListFragment extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
-        dao = DAO.get(getActivity());
+        dao = ReceiptDAO.get(getActivity());
         View view = inflater.inflate(R.layout.fragment_receipt_list, container, false);
         recyclerView = (RecyclerView) view.findViewById(R.id.recyclerView_receipts);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));

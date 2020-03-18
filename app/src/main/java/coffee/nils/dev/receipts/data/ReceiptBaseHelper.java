@@ -8,7 +8,7 @@ import android.util.Log;
 
 import java.util.AbstractMap;
 
-import static coffee.nils.dev.receipts.data.DAO.getStoreHashTableContentValues;
+import static coffee.nils.dev.receipts.data.ReceiptDAO.getStoreHashTableContentValues;
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.ReceiptTable.COLS.STORE_NAME;
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.ReceiptTable.MAX_FIELD_LENGTH_DEFAULT;

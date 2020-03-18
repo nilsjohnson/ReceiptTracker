@@ -4,7 +4,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
-// TODO remove sdf field from this class and use DateTools
 public class Receipt
 {
     private UUID id;
@@ -14,20 +13,24 @@ public class Receipt
     private boolean hasBeenReviewd = false;
     private String category;
 
-    // defines how we show date to user
-    public static final SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
-
+    /**
+     * For making a brand new receipt. See ReceiptDAO.createReceipt() for best practice of
+     * creating new receipts.
+     */
     public Receipt()
     {
         this(UUID.randomUUID());
     }
 
+    /**
+     * For loading receipts for storage into memory
+     * @param id
+     */
     public Receipt(UUID id)
     {
         this.id = id;
-        this.date = new Date();
+        this.date = new Date(); // safeguards against receipts coming from storage that might not have dates.
     }
-
 
     public UUID getId()
     {
@@ -35,7 +38,7 @@ public class Receipt
     }
 
     /**
-     * @return The name of the file. Does not include the full path.
+     * @return The name of the file. Does not include the full path. Get that from the DAO.
      */
     public String getFileName()
     {
@@ -70,11 +73,6 @@ public class Receipt
     public void setTotalAmount(double val)
     {
         this.totalAmount = val;
-    }
-
-    public String getSimpleDate()
-    {
-        return sdf.format(this.date);
     }
 
     public void setHasBeenReviewed(boolean val)

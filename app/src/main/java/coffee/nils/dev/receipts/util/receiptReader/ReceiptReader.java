@@ -20,7 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import coffee.nils.dev.receipts.R;
-import coffee.nils.dev.receipts.data.DAO;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 
 import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.DOMAIN;
 import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.FIRST_LINE;
@@ -78,7 +78,7 @@ public class ReceiptReader
     TextRecognizer textRecognizer;
 
     // to retrieve store names from identifiers
-    private DAO dao;
+    private ReceiptDAO dao;
 
     // values we want to find for the user
     private String storeName;
@@ -113,7 +113,7 @@ public class ReceiptReader
 
     public ReceiptReader(Bitmap image, Context context)
     {
-        this.dao = DAO.get(context);
+        this.dao = ReceiptDAO.get(context);
         this.context = context;
         this.receiptImage = image;
         textRecognizer = new TextRecognizer.Builder(context).build();

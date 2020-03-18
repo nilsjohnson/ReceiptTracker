@@ -12,271 +12,107 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
-
-import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
-
-// TODO min/max with deletes
 
 /**
- * This singleton manages all the data for this app.
+ * Provides core DAO operations, such database queries and file i/o
  */
-public class DAO
+public abstract class DAO
 {
-    private static final String TAG = "Dao";
-    private static DAO dao;
+    protected Context context;
+    private static final String TAG = "DAO";
+    protected SQLiteDatabase database;
 
-    private Context context;
-    private Filter filter;
-    private ArrayList<Receipt> receiptList = new ArrayList<>();
-    private ArrayList<String> categoryList = new ArrayList<>();
-    private ArrayList<Receipt> filteredReceiptList = new ArrayList<>();
-    private SQLiteDatabase database;
+    public static final String FILES_AUTHORITY = "coffee.nils.dev.receipts.fileprovider";
 
-    // maps identifiers to store names
-    private HashMap<String, String> storeMap = new HashMap<>();
-    // maps store names to categories
-    private HashMap<String, String> categoryMap = new HashMap<>();
-
-    private Receipt lowestDateReceipt;
-    private Receipt highestDateReceipDate;
-
-    public static DAO get(Context context)
+    protected ReceiptCursorWrapper queryReceipts(String whereClause, String[] whereArgs)
     {
-        if (dao == null)
-        {
-            dao = new DAO(context);
-        }
+        Cursor cursor = database.query(
+                ReceiptDBSchema.ReceiptTable.NAME,
+                null, // selects all cols
+                whereClause,
+                whereArgs,
+                null,
+                null,
+                null
+        );
 
-        return dao;
+        return new ReceiptCursorWrapper(cursor);
     }
 
-    private DAO(Context context)
+    protected ReceiptCursorWrapper queryStoreNameHashTable(String whereClause, String[] whereArgs)
     {
-        this.context = context.getApplicationContext();
-        database = new ReceiptBaseHelper(context).getWritableDatabase();
+        Cursor cursor = database.query(
+                ReceiptDBSchema.StoreNameHashTable.NAME,
+                null, // selects all cols
+                whereClause,
+                whereArgs,
+                null,
+                null,
+                null
+        );
 
-        ReceiptCursorWrapper cursor = queryReceipts(null, null);
-
-        // load receipts from DB
-        try
-        {
-            cursor.moveToFirst();
-            while(!cursor.isAfterLast())
-            {
-                Receipt r = cursor.getReceipt();
-                //receiptList.add(r);
-                addReceipt(r);
-                addCategory(r.getCategory());
-
-                cursor.moveToNext();
-            }
-        }
-        catch(Exception e)
-        {
-            Log.e(TAG, "Problem reading in receipt table.\n" + e.getMessage());
-        }
-        finally
-        {
-            cursor.close();
-        }
-
-        // load the store name hash table from DB
-        cursor = queryStoreNameHashTable(null, null);
-        try
-        {
-            cursor.moveToFirst();
-            while(!cursor.isAfterLast())
-            {
-                AbstractMap.SimpleEntry kv = cursor.getStoreKVpair();
-                storeMap.put(kv.getKey().toString(), kv.getValue().toString());
-                cursor.moveToNext();
-            }
-        }
-        catch(Exception e)
-        {
-            Log.e(TAG, "Problem reading in store name hash table.\n" + e.getMessage());
-        }
-        finally
-        {
-            cursor.close();
-        }
-
-        // load the categoy hash table from DB
-        cursor = queryCategoryHashTable(null, null);
-        try
-        {
-            cursor.moveToFirst();
-            while(!cursor.isAfterLast())
-            {
-                AbstractMap.SimpleEntry kv = cursor.getStoreKVpair();
-                categoryMap.put(kv.getKey().toString(), kv.getValue().toString());
-                cursor.moveToNext();
-            }
-        }
-        catch(Exception e)
-        {
-            Log.e(TAG, "Problem reading in store name hash table.\n" + e.getMessage());
-        }
-        finally
-        {
-            cursor.close();
-        }
-
+        return new ReceiptCursorWrapper(cursor);
     }
 
-    /**
-     *
-     * @param receipt to add to list. Does not insert into database.
-     */
-    private void addReceipt(Receipt receipt)
+    protected ReceiptCursorWrapper queryCategoryHashTable(String whereClause, String[] whereArgs)
     {
-        checkHighLowDates(receipt);
-        this.receiptList.add(receipt);
+        Cursor cursor = database.query(
+                ReceiptDBSchema.CategoryHashTable.NAME,
+                null, // selects all cols
+                whereClause,
+                whereArgs,
+                null,
+                null,
+                null
+        );
+        ;
+
+        return new ReceiptCursorWrapper(cursor);
     }
 
-    /**
-     * @param receipt to check and set as either min or/and max, with respect to date.
-     */
-    private void checkHighLowDates(Receipt receipt)
-    {
-        if(receipt.getDate() != null)
-        {
-            if(this.highestDateReceipDate == null || receipt.getDate().getTime() > this.highestDateReceipDate.getDate().getTime())
-            {
-                this.highestDateReceipDate = receipt;
-            }
-
-            if(this.lowestDateReceipt == null || receipt.getDate().getTime() < this.lowestDateReceipt.getDate().getTime())
-            {
-                this.lowestDateReceipt = receipt;
-            }
-        }
-    }
-
-    private static ContentValues getReceiptContentValues(Receipt receipt)
+    protected static ContentValues getReceiptContentValues(Receipt receipt)
     {
         ContentValues values = new ContentValues();
-        values.put(ReceiptTable.COLS.UUID, receipt.getId().toString());
-        values.put(ReceiptTable.COLS.STORE_NAME, receipt.getStoreName());
-        values.put(ReceiptTable.COLS.AMOUNT, receipt.getTotalAmount());
-        values.put(ReceiptTable.COLS.DATE, receipt.getDate().getTime());
-        values.put(ReceiptTable.COLS.CATEGORY, receipt.getCategory());
-        values.put(ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED, receipt.hasBeenReviewd() ? 1 : 0);
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.UUID, receipt.getId().toString());
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.STORE_NAME, receipt.getStoreName());
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.AMOUNT, receipt.getTotalAmount());
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.DATE, receipt.getDate().getTime());
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.CATEGORY, receipt.getCategory());
+        values.put(ReceiptDBSchema.ReceiptTable.COLS.RECEIPT_BEEN_REVIEWED, receipt.hasBeenReviewd() ? 1 : 0);
 
         return values;
     }
 
-    public static ContentValues getStoreHashTableContentValues(AbstractMap.SimpleEntry entry)
+    protected static ContentValues getStoreHashTableContentValues(AbstractMap.SimpleEntry entry)
     {
         ContentValues values = new ContentValues();
-        values.put(StoreNameHashTable.COLS.KEY, entry.getKey().toString());
-        values.put(StoreNameHashTable.COLS.VALUE, entry.getValue().toString());
+        values.put(ReceiptDBSchema.StoreNameHashTable.COLS.KEY, entry.getKey().toString());
+        values.put(ReceiptDBSchema.StoreNameHashTable.COLS.VALUE, entry.getValue().toString());
 
         return values;
     }
 
-    public static ContentValues getCategoryHashTableContentValues(AbstractMap.SimpleEntry entry)
+    protected static ContentValues getCategoryHashTableContentValues(AbstractMap.SimpleEntry entry)
     {
         ContentValues values = new ContentValues();
-        values.put(CategoryHashTable.COLS.KEY, entry.getKey().toString());
-        values.put(CategoryHashTable.COLS.VALUE, entry.getValue().toString());
+        values.put(ReceiptDBSchema.CategoryHashTable.COLS.KEY, entry.getKey().toString());
+        values.put(ReceiptDBSchema.CategoryHashTable.COLS.VALUE, entry.getValue().toString());
 
         return values;
     }
 
-    public List<Receipt> getReceiptList()
+
+    public void deleteImage(String fileName)
     {
-        if(filter == null)
+        File file = new File(context.getFilesDir().toString() + "/" + fileName);
+
+        if(file.delete())
         {
-            return this.receiptList;
+            Log.d(TAG, fileName + " deleted succesffuly");
         }
         else
         {
-            return this.filteredReceiptList;
-        }
-
-    }
-
-    public Receipt getReceiptById(UUID id)
-    {
-        for (Receipt p : receiptList)
-        {
-            if (p.getId().equals(id))
-            {
-                return p;
-            }
-        }
-
-        return null;
-    }
-
-    public Receipt createReceipt()
-    {
-        Receipt r = new Receipt();
-        ContentValues values = getReceiptContentValues(r);
-        database.insert(ReceiptTable.NAME, null, values);
-        receiptList.add(0, r);
-        return r;
-    }
-
-    /**
-     * @return The file containing the receipt's image.
-     * This method belongs to the DAO and not the Receipt class because it requires the
-     * application context.
-     */
-    public File getPhotoFile(Receipt receipt)
-    {
-        File fileDir = this.context.getFilesDir();
-        return new File(fileDir, receipt.getFileName());
-    }
-
-    public void updateReceipt(Receipt receipt)
-    {
-        String uuidString = receipt.getId().toString();
-        ContentValues values = getReceiptContentValues(receipt);
-
-        database.update(ReceiptTable.NAME, values, ReceiptTable.COLS.UUID + " = ?",
-                new String[]{uuidString});
-
-       addCategory(receipt.getCategory());
-       addStoreCategoryPair(receipt.getStoreName(), receipt.getCategory());
-
-       // if the receipt was the highest or lowest, we now no longe
-        // can trust our high low flags, so unfortunetly we have to recheck each one
-       if(receipt == highestDateReceipDate || receipt == lowestDateReceipt)
-       {
-            resetHighestHowestDates();
-       }
-       else
-       {
-           checkHighLowDates(receipt);
-       }
-
-    }
-
-    /**
-     * iterates over entire receipt list to set the highest and lowest.
-     */
-    private void resetHighestHowestDates()
-    {
-        highestDateReceipDate = null;
-        lowestDateReceipt = null;
-
-        for (Receipt receipt : receiptList)
-        {
-            if(highestDateReceipDate == null || receipt.getDate().after(highestDateReceipDate.getDate()))
-            {
-                highestDateReceipDate = receipt;
-            }
-            if(lowestDateReceipt == null || receipt.getDate().before(lowestDateReceipt.getDate()))
-            {
-                lowestDateReceipt = receipt;
-            }
+            Log.d(TAG, fileName + " failed to delete");
         }
     }
 
@@ -296,223 +132,22 @@ public class DAO
             bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outStream);
             outStream.flush();
             outStream.close();
-        } catch (IOException e)
+        }
+        catch (IOException e)
         {
             throw e;
         }
     }
 
-    public void deleteImage(String fileName)
-    {
-        File file = new File(context.getFilesDir().toString() + "/" + fileName);
-
-        if(file.delete())
-        {
-            Log.d(TAG, fileName + " deleted succesffuly");
-        }
-        else
-        {
-            Log.d(TAG, fileName + " failed to delete");
-        }
-    }
-
-    private ReceiptCursorWrapper queryReceipts(String whereClause, String[] whereArgs)
-    {
-        Cursor cursor = database.query(
-                ReceiptTable.NAME,
-                null, // selects all cols
-                whereClause,
-                whereArgs,
-                null,
-                null,
-                null
-        );
-
-        return new ReceiptCursorWrapper(cursor);
-    }
-
-    private ReceiptCursorWrapper queryStoreNameHashTable(String whereClause, String[] whereArgs)
-    {
-        Cursor cursor = database.query(
-                StoreNameHashTable.NAME,
-                null, // selects all cols
-                whereClause,
-                whereArgs,
-                null,
-                null,
-                null
-        );
-
-        return new ReceiptCursorWrapper(cursor);
-    }
-
-    private ReceiptCursorWrapper queryCategoryHashTable(String whereClause, String[] whereArgs)
-    {
-        Cursor cursor = database.query(
-                CategoryHashTable.NAME,
-                null, // selects all cols
-                whereClause,
-                whereArgs,
-                null,
-                null,
-                null
-        );
-;
-
-        return new ReceiptCursorWrapper(cursor);
-    }
-
-    public String getStoreByKey(String key)
-    {
-        if(key != null)
-        {
-            return this.storeMap.get(key);
-        }
-        return null;
-    }
-
-    public void addStoreNameKvPair(String storeKey, String storeName)
-    {
-        if(storeKey == null || storeName == null)
-        {
-            return;
-        }
-
-        this.storeMap.put(storeKey, storeName);
-
-        ContentValues values = getStoreHashTableContentValues(new AbstractMap.SimpleEntry(storeKey, storeName));
-        database.insert(StoreNameHashTable.NAME, null, values);
-        printStoreNameHashTable();
-    }
-
-    private void printStoreNameHashTable()
-    {
-        StringBuilder table = new StringBuilder();
-
-        for (String key: storeMap.keySet()){
-            table.append(key + ": " + storeMap.get(key) + "\n");
-        }
-
-        Log.d(TAG, table.toString());
-    }
-
-    public void deleteReceipt(UUID id)
-    {
-        for(int i = 0; i < receiptList.size(); i++)
-        {
-            if(receiptList.get(i).getId().equals(id))
-            {
-                database.delete(ReceiptTable.NAME, ReceiptTable.COLS.UUID + " = ?", new String[]{id.toString()});
-                deleteImage(receiptList.get(i).getFileName());
-                receiptList.remove(i);
-                break;
-            }
-        }
-    }
-
-    public ArrayList<String> getCategoryList()
-    {
-        return this.categoryList;
-    }
-
-    private void addCategory(String category)
-    {
-        if(category != null && !categoryList.contains(category))
-        {
-            categoryList.add(category);
-        }
-    }
-
-    private void addStoreCategoryPair(String storeName, String category)
-    {
-        if(storeName == null || category == null)
-        {
-            return;
-        }
-
-        ContentValues values = getCategoryHashTableContentValues(new AbstractMap.SimpleEntry(storeName, category));
-
-        // if this is a new kv pair
-        if(categoryMap.get(storeName) == null)
-        {
-            categoryMap.put(storeName, category);
-            database.insert(CategoryHashTable.NAME, null, values);
-            Log.d(TAG, "New entry to category map");
-        }
-        // if this is a update to a kv pair
-        else if(!categoryMap.get(storeName).equals(category))
-        {
-            categoryMap.put(storeName, category);
-            database.update(CategoryHashTable.NAME, values, CategoryHashTable.COLS.KEY + " + ?",
-                    new String[]{storeName});
-            Log.d(TAG, "Category map map updated");
-        }
-        else
-        {
-            Log.d(TAG, "Category map not updated");
-        }
-    }
-
     /**
-     * @returns A suggested category for the store name, or null if it doesn't have one.
+     * @return The file containing the receipt's image.
+     * This method belongs to the ReceiptDAO and not the Receipt class because it requires the
+     * application context.
      */
-    public String getCategory(String storeName)
+    public File getPhotoFile(Receipt receipt)
     {
-        if(storeName == null)
-        {
-            return null;
-        }
-
-        return categoryMap.get(storeName);
+        File fileDir = this.context.getFilesDir();
+        return new File(fileDir, receipt.getFileName());
     }
 
-    public Date getHighestDate()
-    {
-        return highestDateReceipDate.getDate();
-    }
-
-    public Date getLowestDate()
-    {
-        return lowestDateReceipt.getDate();
-    }
-
-    private List<Receipt> setFilteredList()
-    {
-        Date startDate = filter.startDate;
-        Date endDate = filter.endDate;
-
-        filteredReceiptList = new ArrayList<>();
-
-        for (Receipt r : receiptList)
-        {
-            // using ! to make this inclusive
-            if (!r.getDate().before(startDate) && !r.getDate().after(endDate))
-            {
-                filteredReceiptList.add(r);
-            }
-        }
-
-        return filteredReceiptList;
-    }
-
-    public void setFilter(Filter filter) throws Exception
-    {
-        if(filter.startDate == null || filter.endDate == null)
-        {
-            throw new Exception("All filter fields must be specified");
-        }
-
-        this.filter = filter;
-        setFilteredList();
-    }
-
-    public void removeFilter()
-    {
-        this.filter = null;
-    }
-
-    public Filter getFilter()
-    {
-        return this.filter;
-    }
 }
