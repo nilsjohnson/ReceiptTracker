@@ -22,6 +22,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -29,7 +30,7 @@ import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Filter;
 import coffee.nils.dev.receipts.data.Receipt;
 
-public class MainActivity extends AppCompatActivity implements FilterDialogFragment.OnRangeChangeListener
+public class MainActivity extends AppCompatActivity implements FilterDialogFragment.OnRangeChangeListener, CatFilterDialogFrag.OnFragmentInteractionListener
 {
     private static String TAG = "MainActivity";
     Fragment curFrag;
@@ -143,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
     public boolean onCreateOptionsMenu(Menu menu)
     {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.receipt_menu, menu);
+        getMenuInflater().inflate(R.menu.main_menu, menu);
         return true;
     }
 
@@ -155,10 +156,20 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_filter)
         {
+            FragmentManager fm = getSupportFragmentManager();
+            FilterDialogFragment frag = FilterDialogFragment.newInstance(dao.getLowestDate(), dao.getHighestDate());
+            frag.show(fm, FilterDialogFragment.TAG);
 
+            return true;
+        }
+
+        if(id == R.id.action_filter_category)
+        {
+            FragmentManager fm = getSupportFragmentManager();
+            CatFilterDialogFrag frag = CatFilterDialogFrag.newInstance(dao.getCategoryList());
+            frag.show(fm, CatFilterDialogFrag.TAG);
         }
 
         return super.onOptionsItemSelected(item);
@@ -196,5 +207,15 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
 
         ReceiptListFragment frag = new ReceiptListFragment();
         fm.beginTransaction().replace(R.id.frag_container, frag).commit();
+    }
+
+    @Override
+    public void onCategoryFilterChange(ArrayList<String> categoryList)
+    {
+        for(String str : categoryList)
+        {
+            Log.d(TAG, str);
+        }
+
     }
 }

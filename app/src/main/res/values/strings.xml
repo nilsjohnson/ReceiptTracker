@@ -23,7 +23,7 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="please_add">Please use the button at the lower right to add a receipt.</string>
     <string name="no_receipts">There are no receipts here.</string>
-    <string name="filter">Filter</string>
+    <string name="filter">Date Filter</string>
     <string name="action_settings">action settings!</string>
     <string name="export">Export</string>
     <string name="filter_title">Add Filter</string>
@@ -31,5 +31,7 @@
     <string name="apply_filter">Apply</string>
     <string name="share">Share</string>
     <string name="send_to">Share Receipt</string>
+    <string name="filter_category_title">Category Filter</string>
+    <string name="action_filter_category">Category Filter</string>
 
 </resources>
