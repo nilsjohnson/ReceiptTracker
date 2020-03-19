@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.Date;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.ReceiptDAO;
@@ -33,6 +34,11 @@ public class ReceiptListFragment extends Fragment
     public ReceiptListFragment()
     {
         // Required empty public constructor
+    }
+
+    public static ReceiptListFragment newInstance()
+    {
+        return new ReceiptListFragment();
     }
 
     private class ReceiptHolder extends RecyclerView.ViewHolder implements View.OnClickListener

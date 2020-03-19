@@ -24,7 +24,7 @@ public class ReceiptDAO extends DAO
 
     private static ReceiptDAO receiptDAO;
 
-    private Filter filter;
+    private Filter filter = new Filter();
 
     // the master list of all receipts
     private ArrayList<Receipt> receiptList = new ArrayList<>();
@@ -161,27 +161,67 @@ public class ReceiptDAO extends DAO
         }
     }
 
+    private boolean isInRange(Receipt r, Date startDate, Date endDate)
+    {
+        if (!r.getDate().before(startDate) && !r.getDate().after(endDate))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean isInChosenCategory(Receipt r, ArrayList<String> chosenCategoryList)
+    {
+        if(chosenCategoryList.contains(r.getCategory()))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     /**
      * @return The receipt list. Will return a filtered list if filter is set.
      */
     public List<Receipt> getReceiptList()
     {
-        if(filter == null)
+        FilterCase filterChoice = filter.getFilterCase();
+
+        if(filterChoice == FilterCase.NO_FILTER)
         {
             return this.receiptList;
         }
 
-        Date startDate = filter.startDate;
-        Date endDate = filter.endDate;
 
         ArrayList<Receipt> filteredReceiptList = new ArrayList<>();
-
+        
         for (Receipt r : receiptList)
         {
-            // using ! to make this inclusive
-            if (!r.getDate().before(startDate) && !r.getDate().after(endDate))
+            switch (filterChoice)
             {
-                filteredReceiptList.add(r);
+                case DATE_ONLY:
+                    if(isInRange(r, filter.startDate, filter.endDate))
+                    {
+                        filteredReceiptList.add(r);
+                    }
+                    break;
+
+                case BY_CATEGORY_ONLY:
+                    if(isInChosenCategory(r, filter.chosenCategoryList))
+                    {
+                        filteredReceiptList.add(r);
+                    }
+                    break;
+
+                case BY_DATE_AND_CATEGORY:
+                    if((isInRange(r, filter.startDate, filter.endDate)) && isInChosenCategory(r, filter.chosenCategoryList))
+                    {
+                        filteredReceiptList.add(r);
+                    }
+                    break;
             }
         }
         return filteredReceiptList;
@@ -235,7 +275,7 @@ public class ReceiptDAO extends DAO
         // can trust our high low flags, so unfortunetly we have to recheck each one
        if(receipt == highestDateReceipDate || receipt == lowestDateReceipt)
        {
-            resetHighestHowestDates();
+            resetStaleData();
        }
        else
        {
@@ -247,13 +287,15 @@ public class ReceiptDAO extends DAO
     /**
      * iterates over entire receipt list to set the highest and lowest.
      */
-    private void resetHighestHowestDates()
+    private void resetStaleData()
     {
         highestDateReceipDate = null;
         lowestDateReceipt = null;
+        categoryList = new ArrayList<>();
 
         for (Receipt receipt : receiptList)
         {
+            // check for min/max dates
             if(highestDateReceipDate == null || receipt.getDate().after(highestDateReceipDate.getDate()))
             {
                 highestDateReceipDate = receipt;
@@ -262,6 +304,9 @@ public class ReceiptDAO extends DAO
             {
                 lowestDateReceipt = receipt;
             }
+
+            // add category
+            addCategory(receipt.getCategory());
         }
     }
 
@@ -313,7 +358,7 @@ public class ReceiptDAO extends DAO
             }
         }
 
-        resetHighestHowestDates();
+        resetStaleData();
     }
 
     public ArrayList<String> getCategoryList()
@@ -382,21 +427,10 @@ public class ReceiptDAO extends DAO
         return lowestDateReceipt.getDate();
     }
 
-    public void setFilter(Filter filter) throws Exception
-    {
-        if(filter.startDate == null || filter.endDate == null)
-        {
-            throw new Exception("All filter fields must be specified");
-        }
-
-        this.filter = filter;
-    }
-
-    public void removeFilter()
-    {
-        this.filter = null;
-    }
-
+    /**
+     *
+     * @return the filter for the receipt list. Access all parts of the filter through this method.
+     */
     public Filter getFilter()
     {
         return this.filter;

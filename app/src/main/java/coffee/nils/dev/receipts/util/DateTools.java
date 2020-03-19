@@ -32,7 +32,7 @@ public class DateTools
         c.set(Calendar.HOUR, 23);
         c.set(Calendar.MINUTE, 59);
         c.set(Calendar.SECOND, 59);
-        c.set(Calendar.MILLISECOND, 9999);
+        c.set(Calendar.MILLISECOND, 999);
 
         return c.getTime();
     }

@@ -25,13 +25,13 @@ import static coffee.nils.dev.receipts.util.DateTools.setToEndOfDay;
 import static coffee.nils.dev.receipts.util.DateTools.setToStartOfDay;
 
 
-public class FilterDialogFragment extends DialogFragment
+public class FilterDateDialogFrag extends DialogFragment
 {
-    public static String TAG = "FilterDialogFragment";
+    public static String TAG = "FilterDateDialogFrag";
     private static final String ARG_MIN_DATE = "start_date";
     private static final String ARGE_MAX_DATE = "end_date";
 
-    private FilterDialogFragment.OnRangeChangeListener rangeChangeListner;
+    private FilterDateDialogFrag.OnRangeChangeListener rangeChangeListner;
 
     private TextView tvStartDate;
     private TextView tvEndDate;
@@ -40,16 +40,21 @@ public class FilterDialogFragment extends DialogFragment
     Date selectedMinDate;
     Date selectedMaxDate;
 
-    ReceiptDAO dao = ReceiptDAO.get(this.getActivity());
+    Date startDate;
+    Date endDate;
+
+    private static final long TIME_FACTOR = 1000*60*60*24;
+
+    ReceiptDAO receiptDAO = ReceiptDAO.get(this.getActivity());
 
 
-    public static FilterDialogFragment newInstance(Date minDate, Date maxDate)
+    public static FilterDateDialogFrag newInstance(Date minDate, Date maxDate)
     {
         Bundle args = new Bundle();
         args.putSerializable(ARG_MIN_DATE, minDate);
         args.putSerializable(ARGE_MAX_DATE, maxDate);
 
-        FilterDialogFragment fdf = new FilterDialogFragment();
+        FilterDateDialogFrag fdf = new FilterDateDialogFrag();
         fdf.setArguments(args);
         return fdf;
     }
@@ -57,13 +62,10 @@ public class FilterDialogFragment extends DialogFragment
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState)
     {
-        Date startDate = dao.getLowestDate();//(Date) getArguments().getSerializable(ARG_MIN_DATE);
-        Date endDate = dao.getHighestDate();//(Date) getArguments().getSerializable(ARGE_MAX_DATE);
         View filterView = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_filter, null);
 
-
-        tvStartDate = (TextView) filterView.findViewById(R.id.textView_startDate);
-        tvStartDate.setText(DateTools.toSimpleFormat(startDate));
+        startDate = DateTools.setToStartOfDay(receiptDAO.getLowestDate());
+        endDate = DateTools.setToEndOfDay(receiptDAO.getHighestDate());
 
         tvEndDate = (TextView) filterView.findViewById(R.id.textView_endDate);
         tvEndDate.setText(DateTools.toSimpleFormat(endDate));
@@ -71,19 +73,17 @@ public class FilterDialogFragment extends DialogFragment
         rangeSeekBar = (CrystalRangeSeekbar) filterView.findViewById(R.id.CrystalRangeSeekBar);
 
 
+        tvStartDate = (TextView) filterView.findViewById(R.id.textView_startDate);
+        tvStartDate.setText(DateTools.toSimpleFormat(startDate));
 
-        Date startDateMidnight = setToStartOfDay(startDate);
-        Date endDateMidnight = setToEndOfDay(endDate);
+        rangeSeekBar.setMinValue(startDate.getTime() / TIME_FACTOR);
+        rangeSeekBar.setMaxValue(endDate.getTime() / TIME_FACTOR);
 
-
-        rangeSeekBar.setMinValue(startDateMidnight.getTime());
-        rangeSeekBar.setMaxValue(endDateMidnight.getTime());
-
-
-        if(dao.getFilter() != null)
+        // if there is already a date filter, we set the thumbs to those points
+        if(receiptDAO.getFilter().startDate != null && receiptDAO.getFilter().endDate != null)
         {
-            rangeSeekBar.setMinStartValue(dao.getFilter().startDate.getTime());
-            rangeSeekBar.setMaxStartValue(dao.getFilter().endDate.getTime());
+            rangeSeekBar.setMinStartValue(receiptDAO.getFilter().startDate.getTime() / TIME_FACTOR);
+            rangeSeekBar.setMaxStartValue(receiptDAO.getFilter().endDate.getTime() / TIME_FACTOR);
             rangeSeekBar.apply();
         }
 
@@ -92,14 +92,12 @@ public class FilterDialogFragment extends DialogFragment
             @Override
             public void valueChanged(Number minValue, Number maxValue)
             {
-                Log.d(TAG, "Min: " + minValue + "Max: " + maxValue);
-                selectedMinDate = setToStartOfDay(new Date(minValue.longValue()));
-                selectedMaxDate = setToStartOfDay(new Date(maxValue.longValue()));
+                selectedMinDate = new Date(minValue.longValue()*TIME_FACTOR);
+                selectedMaxDate = new Date(maxValue.longValue()*TIME_FACTOR);
                 tvStartDate.setText(DateTools.toSimpleFormat(selectedMinDate));
                 tvEndDate.setText(DateTools.toSimpleFormat(selectedMaxDate));
             }
         });
-
 
         class FilterButtonSelect implements DialogInterface.OnClickListener
         {
@@ -110,13 +108,10 @@ public class FilterDialogFragment extends DialogFragment
                 {
                     case DialogInterface.BUTTON_POSITIVE:
                         rangeChangeListner.onRangeChange(selectedMinDate, selectedMaxDate);
-                        Log.d(TAG, "Range Selected");
                         break;
-                    // TODO no negative button
+
                     case DialogInterface.BUTTON_NEGATIVE:
-                        ReceiptDAO.get(getContext()).removeFilter();
-                        rangeChangeListner.removeFilter();
-                        Log.d(TAG, "Filter Removed.");
+                        rangeChangeListner.onRangeChange(null, null);
                 }
             }
         }
@@ -128,8 +123,6 @@ public class FilterDialogFragment extends DialogFragment
                 .setView(filterView)
                 .setPositiveButton(R.string.apply_filter, fbs)
                 .setNegativeButton(R.string.remove_filter, fbs)
-                //.setNeutralButton(android.R.string.cancel, null)
-
                 .create();
     }
 
@@ -138,9 +131,9 @@ public class FilterDialogFragment extends DialogFragment
     {
         super.onAttach(context);
 
-        if(context instanceof FilterDialogFragment.OnRangeChangeListener)
+        if(context instanceof FilterDateDialogFrag.OnRangeChangeListener)
         {
-            rangeChangeListner = (FilterDialogFragment.OnRangeChangeListener) context;
+            rangeChangeListner = (FilterDateDialogFrag.OnRangeChangeListener) context;
         }
         else
         {
@@ -161,9 +154,6 @@ public class FilterDialogFragment extends DialogFragment
     public interface OnRangeChangeListener
     {
         void onRangeChange(Date startDate, Date endDate);
-        void removeFilter();
 
     }
-
-
 }

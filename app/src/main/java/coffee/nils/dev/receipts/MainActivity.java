@@ -27,10 +27,9 @@ import java.util.Date;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.ReceiptDAO;
-import coffee.nils.dev.receipts.data.Filter;
 import coffee.nils.dev.receipts.data.Receipt;
 
-public class MainActivity extends AppCompatActivity implements FilterDialogFragment.OnRangeChangeListener, CatFilterDialogFrag.OnFragmentInteractionListener
+public class MainActivity extends AppCompatActivity implements FilterDateDialogFrag.OnRangeChangeListener, FilterCategoryDialogFrag.OnFragmentInteractionListener
 {
     private static String TAG = "MainActivity";
     Fragment curFrag;
@@ -112,7 +111,7 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
             }
         }
 
-        fm.beginTransaction().replace(R.id.frag_container, curFrag).commit();
+        fm.beginTransaction().replace(R.id.receipt_list_container, curFrag).commit();
     }
     @Override
     public void onPause()
@@ -159,8 +158,8 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         if (id == R.id.action_filter)
         {
             FragmentManager fm = getSupportFragmentManager();
-            FilterDialogFragment frag = FilterDialogFragment.newInstance(dao.getLowestDate(), dao.getHighestDate());
-            frag.show(fm, FilterDialogFragment.TAG);
+            FilterDateDialogFrag frag = FilterDateDialogFrag.newInstance(dao.getLowestDate(), dao.getHighestDate());
+            frag.show(fm, FilterDateDialogFrag.TAG);
 
             return true;
         }
@@ -168,8 +167,8 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
         if(id == R.id.action_filter_category)
         {
             FragmentManager fm = getSupportFragmentManager();
-            CatFilterDialogFrag frag = CatFilterDialogFrag.newInstance(dao.getCategoryList());
-            frag.show(fm, CatFilterDialogFrag.TAG);
+            FilterCategoryDialogFrag frag = FilterCategoryDialogFrag.newInstance();
+            frag.show(fm, FilterCategoryDialogFrag.TAG);
         }
 
         return super.onOptionsItemSelected(item);
@@ -178,44 +177,24 @@ public class MainActivity extends AppCompatActivity implements FilterDialogFragm
     @Override
     public void onRangeChange(Date startDate, Date endDate)
     {
-        Log.d(TAG, "Start Date: " + startDate.toString() + ", End Date: " + endDate);
-        Filter filter = new Filter(startDate, endDate);
-        try
-        {
-            dao.setFilter(filter);
+        dao.getFilter().startDate = startDate;
+        dao.getFilter().endDate = endDate;
 
-            FragmentManager fm = getSupportFragmentManager();
-
-            ReceiptListFragment frag = new ReceiptListFragment();
-            fm.beginTransaction().replace(R.id.frag_container, frag).commit();
-
-            for(Receipt r : dao.getReceiptList())
-            {
-                Log.d(TAG, r.toString());
-            }
-        }
-        catch (Exception e)
-        {
-            Log.e(TAG, e.getMessage());
-        }
+        updateUIAfterFilter();
     }
 
+
     @Override
-    public void removeFilter()
+    public void onCategoriesSelected(ArrayList<String> categoryList)
+    {
+        dao.getFilter().chosenCategoryList = categoryList;
+        updateUIAfterFilter();
+    }
+
+    private void updateUIAfterFilter()
     {
         FragmentManager fm = getSupportFragmentManager();
-
-        ReceiptListFragment frag = new ReceiptListFragment();
-        fm.beginTransaction().replace(R.id.frag_container, frag).commit();
-    }
-
-    @Override
-    public void onCategoryFilterChange(ArrayList<String> categoryList)
-    {
-        for(String str : categoryList)
-        {
-            Log.d(TAG, str);
-        }
-
+        ReceiptListFragment frag = ReceiptListFragment.newInstance();
+        fm.beginTransaction().replace(R.id.receipt_list_container, frag).commit();
     }
 }
