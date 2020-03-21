@@ -136,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
     {
         Intent intent = new Intent(context, ReceiptActivity.class);
         intent.putExtra(EXTRA_NEW_RECEIPT_ID, receipt.getId());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
 
@@ -207,4 +208,5 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
         ReceiptListFragment frag = ReceiptListFragment.newInstance();
         fm.beginTransaction().replace(R.id.receipt_list_container, frag).commit();
     }
+
 }

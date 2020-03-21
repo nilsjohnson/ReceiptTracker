@@ -1,5 +1,7 @@
 package coffee.nils.dev.receipts;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -18,6 +20,8 @@ import java.util.List;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.util.DateTools;
+
+import static coffee.nils.dev.receipts.MainActivity.EXTRA_NEW_RECEIPT_ID;
 
 
 /**
