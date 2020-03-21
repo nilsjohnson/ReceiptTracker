@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
+import coffee.nils.dev.receipts.util.DateTools;
+
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
 
 // TODO deal with min/max with deletes
@@ -163,6 +165,9 @@ public class ReceiptDAO extends DAO
 
     private boolean isInRange(Receipt r, Date startDate, Date endDate)
     {
+        startDate = DateTools.setToStartOfDay(startDate);
+        endDate = DateTools.setToEndOfDay(endDate);
+
         if (!r.getDate().before(startDate) && !r.getDate().after(endDate))
         {
             return true;
@@ -419,12 +424,20 @@ public class ReceiptDAO extends DAO
 
     public Date getHighestDate()
     {
-        return highestDateReceipDate.getDate();
+        if(highestDateReceipDate != null)
+        {
+            return highestDateReceipDate.getDate();
+        }
+        return null;
     }
 
     public Date getLowestDate()
     {
-        return lowestDateReceipt.getDate();
+        if (lowestDateReceipt != null)
+        {
+            return lowestDateReceipt.getDate();
+        }
+        return null;
     }
 
     /**

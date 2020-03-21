@@ -8,22 +8,19 @@ import android.os.Bundle;
 
 import androidx.fragment.app.DialogFragment;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.crystal.crystalrangeseekbar.interfaces.OnRangeSeekbarChangeListener;
 import com.crystal.crystalrangeseekbar.widgets.CrystalRangeSeekbar;
 
+import java.util.Calendar;
 import java.util.Date;
 
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.util.DateTools;
-
-import static coffee.nils.dev.receipts.util.DateTools.setToEndOfDay;
-import static coffee.nils.dev.receipts.util.DateTools.setToStartOfDay;
-
 
 public class FilterDateDialogFrag extends DialogFragment
 {
@@ -40,10 +37,10 @@ public class FilterDateDialogFrag extends DialogFragment
     Date selectedMinDate;
     Date selectedMaxDate;
 
-    Date startDate;
-    Date endDate;
+    Date minDate;
+    Date maxDate;
 
-    private static final long TIME_FACTOR = 1000*60*60*24;
+    private static final long TIME_FACTOR = 1;
 
     ReceiptDAO receiptDAO = ReceiptDAO.get(this.getActivity());
 
@@ -64,20 +61,19 @@ public class FilterDateDialogFrag extends DialogFragment
     {
         View filterView = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_filter, null);
 
-        startDate = DateTools.setToStartOfDay(receiptDAO.getLowestDate());
-        endDate = DateTools.setToEndOfDay(receiptDAO.getHighestDate());
+        minDate = DateTools.setToNoon(receiptDAO.getLowestDate());
+        maxDate = DateTools.setToNoon(receiptDAO.getHighestDate());
 
         tvEndDate = (TextView) filterView.findViewById(R.id.textView_endDate);
-        tvEndDate.setText(DateTools.toSimpleFormat(endDate));
+        tvEndDate.setText(DateTools.toSimpleFormat(maxDate));
+
+        tvStartDate = (TextView) filterView.findViewById(R.id.textView_startDate);
+        tvStartDate.setText(DateTools.toSimpleFormat(minDate));
 
         rangeSeekBar = (CrystalRangeSeekbar) filterView.findViewById(R.id.CrystalRangeSeekBar);
 
-
-        tvStartDate = (TextView) filterView.findViewById(R.id.textView_startDate);
-        tvStartDate.setText(DateTools.toSimpleFormat(startDate));
-
-        rangeSeekBar.setMinValue(startDate.getTime() / TIME_FACTOR);
-        rangeSeekBar.setMaxValue(endDate.getTime() / TIME_FACTOR);
+        rangeSeekBar.setMinValue(minDate.getTime() / TIME_FACTOR);
+        rangeSeekBar.setMaxValue(maxDate.getTime() / TIME_FACTOR);
 
         // if there is already a date filter, we set the thumbs to those points
         if(receiptDAO.getFilter().startDate != null && receiptDAO.getFilter().endDate != null)
@@ -96,33 +92,31 @@ public class FilterDateDialogFrag extends DialogFragment
                 selectedMaxDate = new Date(maxValue.longValue()*TIME_FACTOR);
                 tvStartDate.setText(DateTools.toSimpleFormat(selectedMinDate));
                 tvEndDate.setText(DateTools.toSimpleFormat(selectedMaxDate));
+                rangeChangeListner.onRangeChange(selectedMinDate, selectedMaxDate);
             }
         });
-
-        class FilterButtonSelect implements DialogInterface.OnClickListener
-        {
-            @Override
-            public void onClick(DialogInterface dialog, int which)
-            {
-                switch(which)
-                {
-                    case DialogInterface.BUTTON_POSITIVE:
-                        rangeChangeListner.onRangeChange(selectedMinDate, selectedMaxDate);
-                        break;
-
-                    case DialogInterface.BUTTON_NEGATIVE:
-                        rangeChangeListner.onRangeChange(null, null);
-                }
-            }
-        }
-
-        FilterButtonSelect fbs = new FilterButtonSelect();
 
         return new AlertDialog.Builder(getActivity())
                 .setTitle(R.string.filter_title)
                 .setView(filterView)
-                .setPositiveButton(R.string.apply_filter, fbs)
-                .setNegativeButton(R.string.remove_filter, fbs)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        if(which == DialogInterface.BUTTON_POSITIVE)
+                        {
+                            if(DateTools.isSameDay(selectedMinDate, minDate) && DateTools.isSameDay(selectedMaxDate, maxDate))
+                            {
+                                Toast.makeText(getContext(), getResources().getString(R.string.showing_all_dates), Toast.LENGTH_SHORT).show();
+                            }
+                            else
+                            {
+                                Toast.makeText(getContext(), getResources().getString(R.string.date_filter_applied), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                })
                 .create();
     }
 

@@ -194,12 +194,11 @@ public class ReceiptActivity extends AppCompatActivity
                 dialog.show(manager, DIALOG_DATE);
             }
 
-            // TODO validate date
             @Override
             public void onDateChanged(DatePicker view, int year, int monthOfYear, int dayOfMonth)
             {
                 Calendar cal = Calendar.getInstance();
-                cal.set(year, monthOfYear, dayOfMonth);
+                cal.set(year, monthOfYear, dayOfMonth, 12, 0, 0);
                 Date d = cal.getTime();
                 date = d;
                 receiptChanged = true;
@@ -248,7 +247,8 @@ public class ReceiptActivity extends AppCompatActivity
             }
 
             @Override
-            public void afterTextChanged(Editable s) { }
+            public void afterTextChanged(Editable s) {
+            }
 
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3)
@@ -322,7 +322,6 @@ public class ReceiptActivity extends AppCompatActivity
         category = receipt.getCategory();
 
         // set the toolbar
-        // setup the toolbar
         toolbar = findViewById(R.id.toolbar_receipt);
         setSupportActionBar(toolbar);
 
@@ -345,7 +344,6 @@ public class ReceiptActivity extends AppCompatActivity
         autoCompleteTextViewCategory = (AutoCompleteTextView) findViewById(R.id.autoCompleteTextView);
         autoCompleteTextViewCategory.setText(category);
         UpdateCategoryListener listener = new UpdateCategoryListener(this, dao.getCategoryList());
-        //autoCompleteTextViewCategory.setOnClickListener(listener);
         autoCompleteTextViewCategory.addTextChangedListener(listener);
         autoCompleteTextViewCategory.setOnItemClickListener(listener);
         autoCompleteTextViewCategory.setThreshold(0);
@@ -412,7 +410,7 @@ public class ReceiptActivity extends AppCompatActivity
 
     private void putDateOnButton(Date d)
     {
-        btnDate.setText(DateTools.toSimpleFormat(receipt.getDate()));
+        btnDate.setText(DateTools.toSimpleFormat(d));
     }
 
     private void saveReceipt()

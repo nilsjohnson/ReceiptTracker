@@ -157,11 +157,21 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 
         if (id == R.id.action_filter)
         {
-            FragmentManager fm = getSupportFragmentManager();
-            FilterDateDialogFrag frag = FilterDateDialogFrag.newInstance(dao.getLowestDate(), dao.getHighestDate());
-            frag.show(fm, FilterDateDialogFrag.TAG);
+            if(dao.getLowestDate() != null || dao.getHighestDate() != null)
+            {
+                FragmentManager fm = getSupportFragmentManager();
+                FilterDateDialogFrag frag = FilterDateDialogFrag.newInstance(dao.getLowestDate(), dao.getHighestDate());
+                frag.show(fm, FilterDateDialogFrag.TAG);
 
-            return true;
+                return true;
+            }
+            else
+            {
+                if(dao.getReceiptList().size() > 0)
+                {
+                    Log.e(TAG, "There seems to be receipts, but highest or lowest date is not set. DAO should not allow this.");
+                }
+            }
         }
 
         if(id == R.id.action_filter_category)

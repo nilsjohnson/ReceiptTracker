@@ -30,4 +30,8 @@
     <string name="send_to">Share Receipt</string>
     <string name="filter_category_title">Category Filter</string>
     <string name="action_filter_category">Category Filter</string>
+    <string name="category_filter_applied">Category Filter Applied</string>
+    <string name="category_filter_not_applied">Showing All Categories</string>
+    <string name="date_filter_applied">Date Filter Applied</string>
+    <string name="showing_all_dates">Showing All Dates</string>
 </resources>

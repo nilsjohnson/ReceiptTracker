@@ -1,10 +1,10 @@
-
 package coffee.nils.dev.receipts;
 
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
@@ -12,7 +12,6 @@ import androidx.fragment.app.Fragment;
 
 import java.util.ArrayList;
 
-import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 
 
@@ -90,7 +89,6 @@ public class FilterCategoryDialogFrag extends DialogFragment
             }
 
         }
-
     }
 
     @Override
@@ -100,10 +98,10 @@ public class FilterCategoryDialogFrag extends DialogFragment
         if (context instanceof OnFragmentInteractionListener)
         {
             categoryChangeListener = (OnFragmentInteractionListener) context;
-        } else
+        }
+        else
         {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
+            throw new RuntimeException(context.toString() + " must implement OnFragmentInteractionListener");
         }
     }
 
@@ -121,39 +119,8 @@ public class FilterCategoryDialogFrag extends DialogFragment
     }
 
     @Override
-    public Dialog onCreateDialog(Bundle savedInstanceState) {
-
-        class SetFilterListener implements DialogInterface.OnClickListener
-        {
-            @Override
-            public void onClick(DialogInterface dialog, int which)
-            {
-                switch (which)
-                {
-                    case DialogInterface.BUTTON_POSITIVE:
-                        if(!allChecked())
-                        {
-                            for(int i = 0; i < categories.length; i++)
-                            {
-                                if(checked[i])
-                                {
-                                    selectedCategoryList.add(categories[i].toString());
-                                }
-                            }
-                        }
-                        else
-                        {
-                            selectedCategoryList = null;
-                        }
-                        categoryChangeListener.onCategoriesSelected(selectedCategoryList);
-                        break;
-                    case DialogInterface.BUTTON_NEGATIVE:
-                        break;
-                }
-            }
-        }
-
-        SetFilterListener sfl = new SetFilterListener();
+    public Dialog onCreateDialog(Bundle savedInstanceState)
+    {
         selectedCategoryList = new ArrayList<>();
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
@@ -171,10 +138,28 @@ public class FilterCategoryDialogFrag extends DialogFragment
                         {
                             checked[which] = false;
                         }
+
+                        sendResult();
                     }
                 })
-                .setPositiveButton(R.string.apply_filter, sfl)
-                .setNegativeButton(android.R.string.cancel, sfl);
+                .setPositiveButton(R.string.apply_filter, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        if(which == DialogInterface.BUTTON_POSITIVE)
+                        {
+                            if(!allChecked())
+                            {
+                                Toast.makeText(getContext(), getResources().getString(R.string.category_filter_applied), Toast.LENGTH_SHORT).show();
+                            }
+                            else
+                            {
+                                Toast.makeText(getContext(), getResources().getString(R.string.category_filter_not_applied), Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                });
 
         return builder.create();
     }
@@ -192,5 +177,27 @@ public class FilterCategoryDialogFrag extends DialogFragment
         return true;
     }
 
+    private void sendResult()
+    {
+        selectedCategoryList = new ArrayList<>();
+
+        if(!allChecked())
+        {
+            for(int i = 0; i < categories.length; i++)
+            {
+                if(checked[i])
+                {
+                    selectedCategoryList.add(categories[i].toString());
+                }
+            }
+        }
+        else
+        {
+            categoryChangeListener.onCategoriesSelected(null);
+            return;
+        }
+
+        categoryChangeListener.onCategoriesSelected(selectedCategoryList);
+    }
 }
 
