@@ -1,5 +1,6 @@
 package coffee.nils.dev.receipts;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -14,6 +15,8 @@ import android.view.View;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -32,22 +35,35 @@ import coffee.nils.dev.receipts.data.Receipt;
 public class MainActivity extends AppCompatActivity implements FilterDateDialogFrag.OnRangeChangeListener, FilterCategoryDialogFrag.OnFragmentInteractionListener
 {
     private static String TAG = "MainActivity";
-    Fragment curFrag;
+    // to hold the listView of receipts, or the "no receipts" layout if there's no receipts
+    Fragment primaryFrag;
 
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
+    public static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORATE = 1;
+    public static final int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORATE = 2;
+
 
     private FloatingActionButton fabAddReceipt;
-    private ReceiptDAO dao;
+    private ReceiptDAO receiptDAO;
     private Toolbar toolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORATE);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+        {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORATE);
+        }
+
         Log.d(TAG, "onCreate called");
         setContentView(R.layout.activity_main);
-        dao = ReceiptDAO.get(getApplicationContext());
-
+        receiptDAO = ReceiptDAO.get(getApplicationContext());
 
         toolbar = findViewById(R.id.toolbar_main_menu);
         setSupportActionBar(toolbar);
@@ -58,11 +74,11 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
             @Override
             public void onClick(View v)
             {
-                final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-                Receipt receipt = dao.createReceipt();
-                File photoFile = dao.getPhotoFile(receipt);
-
+                Receipt receipt = receiptDAO.createReceipt();
+                File photoFile = receiptDAO.getPhotoFile(receipt);
+               // Uri uri = Uri.fromFile(photoFile);
                 Uri uri = FileProvider.getUriForFile(getApplicationContext(), "coffee.nils.dev.receipts.fileprovider", photoFile);
                 captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
 
@@ -94,24 +110,24 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
         FragmentManager fm = getSupportFragmentManager();
 
 
-        if(dao.getReceiptList().size() > 0)
+        if(receiptDAO.getReceiptList().size() > 0)
         {
-            curFrag = fm.findFragmentById(R.id.frag_receipt_list);
-            if(curFrag == null)
+            primaryFrag = fm.findFragmentById(R.id.frag_receipt_list);
+            if(primaryFrag == null)
             {
-                curFrag = new ReceiptListFragment();
+                primaryFrag = new ReceiptListFragment();
             }
         }
         else
         {
-            curFrag = fm.findFragmentById(R.id.frag_empty_list);
-            if(curFrag == null)
+            primaryFrag = fm.findFragmentById(R.id.frag_empty_list);
+            if(primaryFrag == null)
             {
-                curFrag = new EmptyListFragment();
+                primaryFrag = new EmptyListFragment();
             }
         }
 
-        fm.beginTransaction().replace(R.id.receipt_list_container, curFrag).commit();
+        fm.beginTransaction().replace(R.id.receipt_list_container, primaryFrag).commit();
     }
     @Override
     public void onPause()
@@ -158,17 +174,17 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 
         if (id == R.id.action_filter)
         {
-            if(dao.getLowestDate() != null || dao.getHighestDate() != null)
+            if(receiptDAO.getLowestDate() != null || receiptDAO.getHighestDate() != null)
             {
                 FragmentManager fm = getSupportFragmentManager();
-                FilterDateDialogFrag frag = FilterDateDialogFrag.newInstance(dao.getLowestDate(), dao.getHighestDate());
+                FilterDateDialogFrag frag = FilterDateDialogFrag.newInstance(receiptDAO.getLowestDate(), receiptDAO.getHighestDate());
                 frag.show(fm, FilterDateDialogFrag.TAG);
 
                 return true;
             }
             else
             {
-                if(dao.getReceiptList().size() > 0)
+                if(receiptDAO.getReceiptList().size() > 0)
                 {
                     Log.e(TAG, "There seems to be receipts, but highest or lowest date is not set. DAO should not allow this.");
                 }
@@ -188,8 +204,8 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
     @Override
     public void onRangeChange(Date startDate, Date endDate)
     {
-        dao.getFilter().startDate = startDate;
-        dao.getFilter().endDate = endDate;
+        receiptDAO.getFilter().startDate = startDate;
+        receiptDAO.getFilter().endDate = endDate;
 
         updateUIAfterFilter();
     }
@@ -198,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
     @Override
     public void onCategoriesSelected(ArrayList<String> categoryList)
     {
-        dao.getFilter().chosenCategoryList = categoryList;
+        receiptDAO.getFilter().chosenCategoryList = categoryList;
         updateUIAfterFilter();
     }
 
@@ -208,5 +224,4 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
         ReceiptListFragment frag = ReceiptListFragment.newInstance();
         fm.beginTransaction().replace(R.id.receipt_list_container, frag).commit();
     }
-
 }

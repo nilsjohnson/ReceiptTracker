@@ -303,11 +303,13 @@ public class ReceiptActivity extends AppCompatActivity
             try
             {
                 dao.saveImage(bitmap, receipt.getFileName());
+
+                photoFile = dao.getPhotoFile(receipt);
                 bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
             }
-            catch (IOException e)
+            catch (Exception e)
             {
-                Log.e(TAG, "Problem saving resized bitmap as a jpg.\n" + e.getMessage());
+                Log.e(TAG, "Problem saving resized bitmap as a jpg. Check Permissions.\n" + e.getMessage());
             }
 
             // try to figure out the category

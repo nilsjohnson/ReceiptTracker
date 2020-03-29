@@ -39,9 +39,14 @@
             android:layout_marginStart="24dp"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="24dp"
+            app:bar_color="@color/colorPrimaryDark"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/textView_endDate" />
+            app:layout_constraintTop_toBottomOf="@+id/textView_endDate"
+            app:left_thumb_color="@color/colorAccent"
+            app:left_thumb_color_pressed="@color/colorPrimary"
+            app:right_thumb_color="@color/colorAccent"
+            app:right_thumb_color_pressed="@color/colorPrimary" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </LinearLayout>

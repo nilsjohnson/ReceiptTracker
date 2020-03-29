@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
+import coffee.nils.dev.receipts.R;
 import coffee.nils.dev.receipts.util.DateTools;
 
 import static coffee.nils.dev.receipts.data.ReceiptDBSchema.*;
@@ -178,7 +179,14 @@ public class ReceiptDAO extends DAO
 
     private boolean isInChosenCategory(Receipt r, ArrayList<String> chosenCategoryList)
     {
-        if(chosenCategoryList.contains(r.getCategory()))
+        String receiptCategory = r.getCategory();
+
+        if(receiptCategory == null)
+        {
+            receiptCategory = context.getResources().getString(R.string.uncategorized);
+        }
+
+        if(chosenCategoryList.contains(receiptCategory))
         {
             return true;
         }
@@ -376,7 +384,15 @@ public class ReceiptDAO extends DAO
         if(category != null && !categoryList.contains(category))
         {
             categoryList.add(category);
+            return;
         }
+
+        String uncategorized = context.getResources().getString(R.string.uncategorized);
+        if(category == null && !categoryList.contains(uncategorized))
+        {
+            categoryList.add(uncategorized);
+        }
+
     }
 
     private void addStoreCategoryPair(String storeName, String category)

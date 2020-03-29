@@ -34,4 +34,5 @@
     <string name="category_filter_not_applied">Showing All Categories</string>
     <string name="date_filter_applied">Date Filter Applied</string>
     <string name="showing_all_dates">Showing All Dates</string>
+    <string name="uncategorized">uncategorized</string>
 </resources>
