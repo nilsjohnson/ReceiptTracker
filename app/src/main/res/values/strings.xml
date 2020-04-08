@@ -35,4 +35,11 @@
     <string name="date_filter_applied">Date Filter Applied</string>
     <string name="showing_all_dates">Showing All Dates</string>
     <string name="uncategorized">uncategorized</string>
+    <string name="request_permission">allow?</string>
+    <string name="camera_error">Camera Error</string>
+    <string name="intro_message">welcome?</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_main3">Main3Activity</string>
 </resources>

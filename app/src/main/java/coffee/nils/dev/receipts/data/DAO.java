@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
+import android.media.Image;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
@@ -37,6 +38,7 @@ public abstract class DAO
     protected Context context;
     private static final String TAG = "DAO";
     protected SQLiteDatabase database;
+    protected ImageSaver imageSaver;
 
     public static final String FILES_AUTHORITY = "coffee.nils.dev.receipts.fileprovider";
 
@@ -212,6 +214,13 @@ public abstract class DAO
             // not currently mounted.
             Log.w("ExternalStorage", "Error writing " + file, e);
         }
+    }
+
+    public ImageSaver makeImageSaver(Image image, String title)
+    {
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), context.getResources().getString(R.string.app_name));
+        File file = new File(dir, title);
+        return new ImageSaver(image, file);
     }
 
     /**

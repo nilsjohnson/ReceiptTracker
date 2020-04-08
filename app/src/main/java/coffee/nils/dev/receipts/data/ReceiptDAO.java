@@ -2,6 +2,7 @@ package coffee.nils.dev.receipts.data;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.media.Image;
 import android.util.Log;
 
 import java.util.AbstractMap;

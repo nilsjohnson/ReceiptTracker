@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import coffee.nils.dev.receipts.camera.CameraActivity;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
 
@@ -74,23 +75,33 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
             @Override
             public void onClick(View v)
             {
-                Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
                 Receipt receipt = receiptDAO.createReceipt();
-                File photoFile = receiptDAO.getPhotoFile(receipt);
-               // Uri uri = Uri.fromFile(photoFile);
-                Uri uri = FileProvider.getUriForFile(getApplicationContext(), "coffee.nils.dev.receipts.fileprovider", photoFile);
-                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
-
-                List<ResolveInfo> cameraActivities = getApplicationContext().getPackageManager().queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
-
-                for (ResolveInfo activity: cameraActivities)
-                {
-                    getApplicationContext().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                }
+//                Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//
+//                Receipt receipt = receiptDAO.createReceipt();
+//                File photoFile = receiptDAO.getPhotoFile(receipt);
+//               // Uri uri = Uri.fromFile(photoFile);
+//                Uri uri = FileProvider.getUriForFile(getApplicationContext(), "coffee.nils.dev.receipts.fileprovider", photoFile);
+//                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+//
+//                List<ResolveInfo> cameraActivities = getApplicationContext().getPackageManager().queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
+//
+//                for (ResolveInfo activity: cameraActivities)
+//                {
+//                    getApplicationContext().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+//                }
+//
+//                launchReceiptActivity(receipt, getApplicationContext());
+//                startActivity(captureImage);
 
                 launchReceiptActivity(receipt, getApplicationContext());
-                startActivity(captureImage);
+
+                Bundle bundle = new Bundle();
+                bundle.putSerializable(EXTRA_NEW_RECEIPT_ID, receipt.getId());
+                Intent intent = new Intent(getApplicationContext(), CameraActivity.class);
+                intent.putExtras(bundle);
+                startActivity(intent);
+
             }
         });
     }
