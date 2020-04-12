@@ -2,8 +2,10 @@ package coffee.nils.dev.receipts.camera;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Bitmap;
 import android.os.Bundle;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 import coffee.nils.dev.receipts.MainActivity;
@@ -28,8 +30,41 @@ public class CameraActivity extends AppCompatActivity
         }
         getSupportFragmentManager()
                 .beginTransaction().
-                replace(R.id.container, CameraFragment.newInstance(newReceiptID))
+                replace(R.id.container, CameraFragment.newInstance(newReceiptID, new ReviewImage()))
                 .commit();
+    }
+
+    public class ReviewImage implements Serializable
+    {
+        public void startReview(Bitmap image, String imagePath)
+        {
+            ImageReviewFragment frag = ImageReviewFragment.newInstance(image, imagePath, new RedoImage(), new AcceptImage());
+
+            getSupportFragmentManager()
+                    .beginTransaction().
+                    replace(R.id.container, frag)
+                    .commit();
+        }
+    }
+
+    public class RedoImage implements Serializable
+    {
+        public void redoImage()
+        {
+            // TODO dry this up
+            getSupportFragmentManager()
+                    .beginTransaction().
+                    replace(R.id.container, CameraFragment.newInstance(newReceiptID, new ReviewImage()))
+                    .commit();
+        }
+    }
+
+    public class AcceptImage implements Serializable
+    {
+        public void acceptImage()
+        {
+            finish();
+        }
     }
 
     @Override

@@ -216,8 +216,9 @@ public abstract class DAO
         }
     }
 
-    public ImageSaver makeImageSaver(Image image, String title)
+    public ImageSaver makeImageSaver(Bitmap image, String title)
     {
+        // TODO call mkdir to make sure directory exists
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), context.getResources().getString(R.string.app_name));
         File file = new File(dir, title);
         return new ImageSaver(image, file);

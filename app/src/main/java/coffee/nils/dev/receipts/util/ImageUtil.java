@@ -4,8 +4,11 @@ import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.media.Image;
 
 import org.opencv.core.Mat;
+
+import java.nio.ByteBuffer;
 
 public class ImageUtil
 {
@@ -55,6 +58,17 @@ public class ImageUtil
         options.inSampleSize = inSampleSize;
 
         return BitmapFactory.decodeFile(path, options);
+    }
+
+    /*
+    TODO scale this return value
+     */
+    public static Bitmap imageToBitmap(Image image)
+    {
+        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+        byte[] bytes = new byte[buffer.capacity()];
+        buffer.get(bytes);
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
     }
 
 }

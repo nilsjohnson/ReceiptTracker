@@ -1,28 +1,34 @@
 package coffee.nils.dev.receipts.data;
 
+import android.graphics.Bitmap;
 import android.media.Image;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.OutputStream;
+
+
+import coffee.nils.dev.receipts.R;
 
 /**
  * Saves a JPEG {@link Image} into the specified {@link File}.
  */
-class ImageSaver implements Runnable {
-
+class ImageSaver implements Runnable
+{
+    private static String TAG = "ImageSaver";
     /**
      * The JPEG image
      */
-    private final Image image;
+    private final Bitmap image;
 
     /**
      * The file we save the image into.
      */
     private final File file;
 
-    ImageSaver(Image image, File file)
+    ImageSaver(Bitmap image, File file)
     {
         this.image = image;
         this.file = file;
@@ -31,34 +37,18 @@ class ImageSaver implements Runnable {
     @Override
     public void run()
     {
-        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
-        FileOutputStream output = null;
+        OutputStream outStream = null;
 
         try
         {
-            output = new FileOutputStream(file);
-            output.write(bytes);
+            outStream = new FileOutputStream(file);
+            image.compress(Bitmap.CompressFormat.JPEG, 90, outStream);
+            outStream.flush();
+            outStream.close();
         }
         catch (IOException e)
         {
-            e.printStackTrace();
-        }
-        finally
-        {
-            image.close();
-            if (null != output)
-            {
-                try
-                {
-                    output.close();
-                }
-                catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-            }
+            Log.e(TAG, e.getMessage());
         }
     }
 }

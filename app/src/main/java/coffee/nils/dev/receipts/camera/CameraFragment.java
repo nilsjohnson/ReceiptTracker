@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -24,6 +26,7 @@ import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
 import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
@@ -47,6 +50,7 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,6 +63,9 @@ import java.util.concurrent.TimeUnit;
 import coffee.nils.dev.receipts.R;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
+
+import static coffee.nils.dev.receipts.camera.CameraState.*;
+import static coffee.nils.dev.receipts.util.ImageUtil.imageToBitmap;
 
 public class CameraFragment extends Fragment implements View.OnClickListener, ActivityCompat.OnRequestPermissionsResultCallback
 {
@@ -81,36 +88,14 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     private ReceiptDAO receiptDAO = ReceiptDAO.get(getContext());
     private UUID receiptID;
     private static final String ARG_RECEIPT_ID = "Receipt_ID";
+    private static final String ARG_REVIEW_EVENT_HANDLER = "Review_Event_Handler";
 
     /**
      * Tag for the {@link Log}.
      */
     private static final String TAG = "CameraFragment";
 
-    /**
-     * Camera state: Showing camera preview.
-     */
-    private static final int STATE_PREVIEW = 0;
 
-    /**
-     * Camera state: Waiting for the focus to be locked.
-     */
-    private static final int STATE_WAITING_LOCK = 1;
-
-    /**
-     * Camera state: Waiting for the exposure to be precapture state.
-     */
-    private static final int STATE_WAITING_PRECAPTURE = 2;
-
-    /**
-     * Camera state: Waiting for the exposure state to be something other than precapture.
-     */
-    private static final int STATE_WAITING_NON_PRECAPTURE = 3;
-
-    /**
-     * Camera state: Picture was taken.
-     */
-    private static final int STATE_PICTURE_TAKEN = 4;
 
     /**
      * Max preview width that is guaranteed by Camera2 API
@@ -232,6 +217,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     private ImageReader imageReader;
 
+    Bitmap bitmapImage;
+
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
      * still image is ready to be saved.
@@ -242,12 +229,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         @Override
         public void onImageAvailable(ImageReader reader)
         {
+            Image image = reader.acquireLatestImage();
+            bitmapImage = imageToBitmap(image);
+
             Receipt r = receiptDAO.getReceiptById(receiptID);
-            String fileName = r.getFileName();
-            backgroundHandler.post(receiptDAO.makeImageSaver(reader.acquireNextImage(), fileName));
+            backgroundHandler.post(receiptDAO.makeImageSaver(bitmapImage, r.getFileName()));
         }
 
     };
+
+
 
     /**
      * {@link CaptureRequest.Builder} for the camera preview
@@ -264,7 +255,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      *
      * @see #captureCallback
      */
-    private int state = STATE_PREVIEW;
+    private CameraState state = STATE_PREVIEW;
 
     /**
      * A {@link Semaphore} to prevent the app from exiting before closing the camera.
@@ -363,6 +354,57 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
 
     };
 
+
+    /**
+     * Capture a still picture. This method should be called when we get a response in
+     * {@link #captureCallback} from both {@link #lockFocus()}.
+     */
+    private void captureStillPicture()
+    {
+        try
+        {
+            final Activity activity = getActivity();
+            if (null == activity || null == cameraDevice)
+            {
+                return;
+            }
+            // This is the CaptureRequest.Builder that we use to take a picture.
+
+            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.addTarget(imageReader.getSurface());
+
+            // Use the same AE and AF modes as the preview.
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            setAutoFlash(captureBuilder);
+
+            // Orientation
+            int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation));
+
+            CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback()
+            {
+
+                @Override
+                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
+                {
+                    showToast("Saved");
+                    Log.d(TAG, "Saved");
+                    unlockFocus();
+                   reviewAction.startReview(bitmapImage, receiptDAO.getReceiptById(receiptID).getFileName());
+
+                }
+            };
+
+            captureSession.stopRepeating();
+            captureSession.abortCaptures();
+            captureSession.capture(captureBuilder.build(), CaptureCallback, null);
+        }
+        catch (CameraAccessException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * Shows a {@link Toast} on the UI thread.
      *
@@ -441,14 +483,17 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         }
     }
 
-    public static CameraFragment newInstance(UUID receiptID)
+    public static CameraFragment newInstance(UUID receiptID, CameraActivity.ReviewImage reviewAction)
     {
         Bundle args = new Bundle();
         args.putSerializable(ARG_RECEIPT_ID, receiptID);
+        args.putSerializable(ARG_REVIEW_EVENT_HANDLER, reviewAction);
         CameraFragment camFrag = new CameraFragment();
         camFrag.setArguments(args);
         return camFrag;
     }
+
+    private CameraActivity.ReviewImage reviewAction;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -457,6 +502,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         if (getArguments() != null)
         {
            receiptID = (UUID) getArguments().getSerializable(ARG_RECEIPT_ID);
+           reviewAction = (CameraActivity.ReviewImage) getArguments().getSerializable(ARG_REVIEW_EVENT_HANDLER);
         }
     }
 
@@ -957,52 +1003,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         }
     }
 
-    /**
-     * Capture a still picture. This method should be called when we get a response in
-     * {@link #captureCallback} from both {@link #lockFocus()}.
-     */
-    private void captureStillPicture()
-    {
-        try
-        {
-            final Activity activity = getActivity();
-            if (null == activity || null == cameraDevice)
-            {
-                return;
-            }
-            // This is the CaptureRequest.Builder that we use to take a picture.
-
-            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            captureBuilder.addTarget(imageReader.getSurface());
-
-            // Use the same AE and AF modes as the preview.
-            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            setAutoFlash(captureBuilder);
-
-            // Orientation
-            int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation));
-
-            CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback()
-            {
-
-                @Override
-                public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
-                {
-                    showToast("Saved");
-                    Log.d(TAG, "Saved");
-                    unlockFocus();
-                }
-            };
-
-            captureSession.stopRepeating();
-            captureSession.abortCaptures();
-            captureSession.capture(captureBuilder.build(), CaptureCallback, null);
-        } catch (CameraAccessException e)
-        {
-            e.printStackTrace();
-        }
-    }
 
     /**
      * Retrieves the JPEG orientation from the specified screen rotation.
