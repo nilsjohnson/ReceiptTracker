@@ -9,7 +9,6 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
@@ -50,6 +49,11 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
 
+import org.opencv.android.Utils;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.imgcodecs.Imgcodecs;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,13 +67,20 @@ import java.util.concurrent.TimeUnit;
 import coffee.nils.dev.receipts.R;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
+import coffee.nils.dev.receipts.util.ImageUtil;
 
 import static coffee.nils.dev.receipts.camera.CameraState.*;
-import static coffee.nils.dev.receipts.util.ImageUtil.imageToBitmap;
+import static coffee.nils.dev.receipts.util.ImageUtil.*;
 
 public class CameraFragment extends Fragment implements View.OnClickListener, ActivityCompat.OnRequestPermissionsResultCallback
 {
+    static
+    {
+        System.loadLibrary("native-lib");
+        System.loadLibrary("opencv_java4");
+    }
 
+    public native long autoCrop(long addr);
     /**
      * Conversion from screen rotation to JPEG orientation.
      */
@@ -94,8 +105,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      * Tag for the {@link Log}.
      */
     private static final String TAG = "CameraFragment";
-
-
 
     /**
      * Max preview width that is guaranteed by Camera2 API
@@ -216,8 +225,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      * An {@link ImageReader} that handles still image capture.
      */
     private ImageReader imageReader;
-
-    Bitmap bitmapImage;
+    Bitmap bitmap;
 
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
@@ -230,15 +238,23 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         public void onImageAvailable(ImageReader reader)
         {
             Image image = reader.acquireLatestImage();
-            bitmapImage = imageToBitmap(image);
+            // image to byte array
+            ByteBuffer bb = image.getPlanes()[0].getBuffer();
+            byte[] data = new byte[bb.remaining()];
+            bb.get(data);
+
+            Mat mat = Imgcodecs.imdecode(new MatOfByte(data), Imgcodecs.IMREAD_UNCHANGED);
+            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
+            Mat cropped = new Mat(addr);
+            bitmap = ImageUtil.getEmptyBitmap(cropped);
+            Utils.matToBitmap(cropped, bitmap);
+
 
             Receipt r = receiptDAO.getReceiptById(receiptID);
-            backgroundHandler.post(receiptDAO.makeImageSaver(bitmapImage, r.getFileName()));
+            backgroundHandler.post(receiptDAO.makeImageSaver(bitmap, r.getFileName()));
         }
 
     };
-
-
 
     /**
      * {@link CaptureRequest.Builder} for the camera preview
@@ -390,7 +406,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                     showToast("Saved");
                     Log.d(TAG, "Saved");
                     unlockFocus();
-                   reviewAction.startReview(bitmapImage, receiptDAO.getReceiptById(receiptID).getFileName());
+                   reviewAction.startReview(bitmap, receiptDAO.getReceiptById(receiptID).getFileName());
 
                 }
             };
@@ -934,12 +950,15 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         {
             return;
         }
+
         int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+
         Matrix matrix = new Matrix();
         RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
         RectF bufferRect = new RectF(0, 0, previewSize.getHeight(), previewSize.getWidth());
         float centerX = viewRect.centerX();
         float centerY = viewRect.centerY();
+
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation)
         {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
@@ -949,7 +968,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                     (float) viewWidth / previewSize.getWidth());
             matrix.postScale(scale, scale, centerX, centerY);
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
-        } else if (Surface.ROTATION_180 == rotation)
+        }
+        else if (Surface.ROTATION_180 == rotation)
         {
             matrix.postRotate(180, centerX, centerY);
         }

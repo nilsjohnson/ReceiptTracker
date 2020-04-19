@@ -284,12 +284,12 @@ public class ReceiptActivity extends AppCompatActivity
         // if this is the first time showing reciept, autocrop and autofill it
         if(!receipt.hasBeenReviewd())
         {
-            Mat mat = new Mat();
-            Utils.bitmapToMat(bitmap, mat);
-            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
-            Mat cropped = new Mat(addr);
-            bitmap = ImageUtil.getEmptyBitmap(cropped);
-            Utils.matToBitmap(cropped, bitmap);
+//            Mat mat = new Mat();
+//            Utils.bitmapToMat(bitmap, mat);
+//            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
+//            Mat cropped = new Mat(addr);
+//            bitmap = ImageUtil.getEmptyBitmap(cropped);
+//            Utils.matToBitmap(cropped, bitmap);
 
             // try to guess values;
             receiptReader = new ReceiptReader(bitmap, this);

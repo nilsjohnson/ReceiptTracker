@@ -60,4 +60,34 @@ Java_coffee_nils_dev_receipts_ReceiptActivity_autoCrop(JNIEnv *env, jobject thiz
     }
 
     return (jlong)croppedImage;
+}extern "C"
+JNIEXPORT jlong JNICALL
+Java_coffee_nils_dev_receipts_camera_CameraFragment_autoCrop(JNIEnv *env, jobject thiz, jlong addr) {
+    Mat* img_ptr = (Mat*)addr;
+    Mat image = *img_ptr;
+
+    Rect bounding_rect;
+
+    Mat thresh(image.rows, image.cols, CV_8UC1);
+    //Convert to gray
+    cvtColor(image, thresh, COLOR_BGR2GRAY);
+    threshold(thresh, thresh, 150, 255, THRESH_BINARY + THRESH_OTSU); //Threshold the gray
+
+    // Vector for storing contour
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(thresh, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_SIMPLE);
+    sort(contours.begin(), contours.end(), compareContourAreas); //Store the index of largest contour
+
+    bounding_rect = boundingRect((const _InputArray &)contours[0]);
+    rectangle(image, bounding_rect, Scalar(250, 250, 250), 3);
+    Mat* croppedImage = new Mat(image(bounding_rect));//image(bounding_rect);
+
+    // if landscape
+    if(croppedImage->cols > croppedImage->rows)
+    {
+        rotate(*croppedImage, *croppedImage, ROTATE_90_CLOCKWISE);
+    }
+
+    return (jlong)croppedImage;
 }
