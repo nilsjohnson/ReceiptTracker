@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -20,6 +21,7 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -40,6 +42,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -81,12 +84,13 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     }
 
     public native long autoCrop(long addr);
-    /**
-     * Conversion from screen rotation to JPEG orientation.
-     */
+
+    // Conversion from screen rotation to JPEG orientationn
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
+
+    private ProgressBar progressBar;
 
     static
     {
@@ -101,19 +105,11 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     private static final String ARG_RECEIPT_ID = "Receipt_ID";
     private static final String ARG_REVIEW_EVENT_HANDLER = "Review_Event_Handler";
 
-    /**
-     * Tag for the {@link Log}.
-     */
     private static final String TAG = "CameraFragment";
 
-    /**
-     * Max preview width that is guaranteed by Camera2 API
-     */
-    private static final int MAX_PREVIEW_WIDTH = 1920;
 
-    /**
-     * Max preview height that is guaranteed by Camera2 API
-     */
+     //Max preview height and width that is guaranteed by Camera2 API
+    private static final int MAX_PREVIEW_WIDTH = 1920;
     private static final int MAX_PREVIEW_HEIGHT = 1080;
 
     /**
@@ -122,7 +118,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener()
     {
-
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height)
         {
@@ -136,49 +131,30 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         }
 
         @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture)
-        {
-            return true;
-        }
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) { return true; }
 
         @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture texture)
-        {
-        }
-
+        public void onSurfaceTextureUpdated(SurfaceTexture texture) { }
     };
 
-    /**
-     * ID of the current {@link CameraDevice}.
-     */
+    /** ID of the current {@link CameraDevice} */
     private String cameraId;
 
-    /**
-     * An {@link AutoFitTextureView} for camera preview.
-     */
+    /** An {@link AutoFitTextureView} for camera preview.*/
     private AutoFitTextureView textureView;
 
-    /**
-     * A {@link CameraCaptureSession } for camera preview.
-     */
+    /** A {@link CameraCaptureSession } for camera preview.*/
     private CameraCaptureSession captureSession;
 
-    /**
-     * A reference to the opened {@link CameraDevice}.
-     */
+    /** A reference to the opened {@link CameraDevice}.*/
     private CameraDevice cameraDevice;
 
-    /**
-     * The {@link android.util.Size} of camera preview.
-     */
+    /** The {@link android.util.Size} of camera preview.*/
     private Size previewSize;
 
-    /**
-     * {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.
-     */
+    /** {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.*/
     private final CameraDevice.StateCallback callbackState = new CameraDevice.StateCallback()
     {
-
         @Override
         public void onOpened(@NonNull CameraDevice cameraDevice)
         {
@@ -211,21 +187,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
 
     };
 
-    /**
-     * An additional thread for running tasks that shouldn't block the UI.
-     */
+    /** An additional thread for running tasks that shouldn't block the UI.*/
     private HandlerThread backgroundThread;
 
-    /**
-     * A {@link Handler} for running tasks in the background.
-     */
+    /** A {@link Handler} for running tasks in the background.*/
     private Handler backgroundHandler;
 
-    /**
-     * An {@link ImageReader} that handles still image capture.
-     */
+    /** An {@link ImageReader} that handles still image capture.*/
+
     private ImageReader imageReader;
-    Bitmap bitmap;
+    private Bitmap bitmap;
 
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
@@ -233,7 +204,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     private final ImageReader.OnImageAvailableListener onImageAvailableListener = new ImageReader.OnImageAvailableListener()
     {
-
         @Override
         public void onImageAvailable(ImageReader reader)
         {
@@ -249,53 +219,36 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
             bitmap = ImageUtil.getEmptyBitmap(cropped);
             Utils.matToBitmap(cropped, bitmap);
 
-
             Receipt r = receiptDAO.getReceiptById(receiptID);
             backgroundHandler.post(receiptDAO.makeImageSaver(bitmap, r.getFileName()));
         }
 
     };
 
-    /**
-     * {@link CaptureRequest.Builder} for the camera preview
-     */
+    /** {@link CaptureRequest.Builder} for the camera preview */
     private CaptureRequest.Builder previewBuilder;
 
-    /**
-     * {@link CaptureRequest} generated by {@link #previewBuilder}
-     */
+    /** {@link CaptureRequest} generated by {@link #previewBuilder} */
     private CaptureRequest previewRequest;
 
-    /**
-     * The current state of camera state for taking pictures.
-     *
-     * @see #captureCallback
-     */
+    /** The current state of camera state for taking pictures. */
     private CameraState state = STATE_PREVIEW;
 
-    /**
-     * A {@link Semaphore} to prevent the app from exiting before closing the camera.
-     */
+    /**A {@link Semaphore} to prevent the app from exiting before closing the camera. */
     private Semaphore cameraOpenCloseLock = new Semaphore(1);
 
-    /**
-     * Whether the current camera device supports Flash or not.
-     */
+    /** Whether the current camera device supports Flash or not. */
     private boolean flashSupported;
 
-    /**
-     * Orientation of the camera sensor
-     */
+    /** Orientation of the camera sensor */
     private int sensorOrientation;
 
-    /**
-     * A {@link CameraCaptureSession.CaptureCallback} that handles events related to JPEG capture.
-     */
+    /** A {@link CameraCaptureSession.CaptureCallback} that handles events related to JPEG capture. */
     private CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback()
     {
-
         private void process(CaptureResult result)
         {
+            Log.d(TAG, "state @ time of callback: " + state.toString());
             switch (state)
             {
                 case STATE_PREVIEW:
@@ -309,17 +262,17 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                     if (afState == null)
                     {
                         captureStillPicture();
-                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
-                            CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState)
+                    }
+                    else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState)
                     {
                         // CONTROL_AE_STATE can be null on some devices
                         Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                        if (aeState == null ||
-                                aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED)
+                        if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED)
                         {
                             state = STATE_PICTURE_TAKEN;
                             captureStillPicture();
-                        } else
+                        }
+                        else
                         {
                             runPrecaptureSequence();
                         }
@@ -330,9 +283,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                 {
                     // CONTROL_AE_STATE can be null on some devices
                     Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null ||
-                            aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
-                            aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED)
+                    if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED)
                     {
                         state = STATE_WAITING_NON_PRECAPTURE;
                     }
@@ -353,21 +304,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         }
 
         @Override
-        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
-                                        @NonNull CaptureRequest request,
-                                        @NonNull CaptureResult partialResult)
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult)
         {
             process(partialResult);
         }
 
         @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
-                                       @NonNull CaptureRequest request,
-                                       @NonNull TotalCaptureResult result)
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
         {
             process(result);
         }
-
     };
 
 
@@ -399,14 +345,13 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
 
             CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback()
             {
-
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
                 {
                     showToast("Saved");
                     Log.d(TAG, "Saved");
                     unlockFocus();
-                   reviewAction.startReview(bitmap, receiptDAO.getReceiptById(receiptID).getFileName());
+                    reviewAction.startReview(bitmap, receiptDAO.getReceiptById(receiptID).getFileName());
 
                 }
             };
@@ -458,10 +403,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      * @param aspectRatio       The aspect ratio
      * @return The optimal {@code Size}, or an arbitrary one if none were big enough
      */
-    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth,
-                                          int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio)
+    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth, int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio)
     {
-
         // Collect the supported resolutions that are at least as big as the preview Surface
         List<Size> bigEnough = new ArrayList<>();
         // Collect the supported resolutions that are smaller than the preview Surface
@@ -470,14 +413,13 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         int h = aspectRatio.getHeight();
         for (Size option : choices)
         {
-            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight &&
-                    option.getHeight() == option.getWidth() * h / w)
+            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight && option.getHeight() == option.getWidth() * h / w)
             {
-                if (option.getWidth() >= textureViewWidth &&
-                        option.getHeight() >= textureViewHeight)
+                if (option.getWidth() >= textureViewWidth && option.getHeight() >= textureViewHeight)
                 {
                     bigEnough.add(option);
-                } else
+                }
+                else
                 {
                     notBigEnough.add(option);
                 }
@@ -533,63 +475,25 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     {
         view.findViewById(R.id.btn_take_picture).setOnClickListener(this);
         textureView = (AutoFitTextureView) view.findViewById(R.id.texture);
+        progressBar = view.findViewById(R.id.progressBar_cropping);
+        progressBar.setVisibility(ProgressBar.INVISIBLE);
+
         textureView.setOnTouchListener(new TextureView.OnTouchListener()
         {
             @Override
             public boolean onTouch(View v, MotionEvent event)
             {
-                Toast.makeText(getContext(), "Clck!", Toast.LENGTH_SHORT).show();
-                return false;
+                int x = (int)event.getX();
+                int y = (int)event.getY();
+                focusArea(x, y);
+                return true;
             }
         });
-    }
-
-    private void focusCamera(MotionEvent event)
-    {
-        if (cameraId == null)
-        {
-            return;
-        }
-
-        CameraManager cm = (CameraManager) getActivity().getSystemService(Context.CAMERA_SERVICE);
-        CameraCharacteristics cc = null;
-
-        try
-        {
-            CaptureRequest.Builder captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            cc = cm.getCameraCharacteristics(cameraId);
-            int myX = (int) event.getX();
-            int myY = (int) event.getY();
-            MeteringRectangle focusArea = new MeteringRectangle(myX - 100, myY - 100, 200, 200, MeteringRectangle.METERING_WEIGHT_DONT_CARE);
-            captureSession.stopRepeating();
-            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
-            captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-
-
-        }
-        catch (CameraAccessException e)
-        {
-            Log.e(TAG, e.getMessage());
-        }
-
-
-        previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-        try
-        {
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
-            // After this, the camera will go back to the normal state of preview.
-            state = STATE_PREVIEW;
-        } catch (CameraAccessException e)
-        {
-            // log
-        }
-
     }
 
     @Override
     public void onActivityCreated(Bundle savedInstanceState)
     {
-        super.onActivityCreated(savedInstanceState);
         super.onActivityCreated(savedInstanceState);
     }
 
@@ -606,7 +510,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         if (textureView.isAvailable())
         {
             openCamera(textureView.getWidth(), textureView.getHeight());
-        } else
+        }
+        else
         {
             textureView.setSurfaceTextureListener(mSurfaceTextureListener);
         }
@@ -625,7 +530,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA))
         {
             new ConfirmationDialog().show(getChildFragmentManager(), FRAGMENT_DIALOG);
-        } else
+        }
+        else
         {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
@@ -642,7 +548,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                 ErrorDialog.newInstance(getString(R.string.request_permission))
                         .show(getChildFragmentManager(), FRAGMENT_DIALOG);
             }
-        } else
+        }
+        else
         {
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
@@ -885,8 +792,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
             Surface surface = new Surface(texture);
 
             // We set up a CaptureRequest.Builder with the output Surface.
-            previewBuilder
-                    = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            previewBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             previewBuilder.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
@@ -981,7 +887,57 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     private void takePicture()
     {
+        progressBar.setVisibility(ProgressBar.VISIBLE);
         lockFocus();
+    }
+
+    private void focusArea(int xCoordinate, int yCoordinate)
+    {
+        Log.d(TAG, "focus called: state:" + state.toString());
+        if (cameraId == null) { return; }
+
+
+        CameraManager cm = (CameraManager)getActivity().getSystemService(Context.CAMERA_SERVICE);
+        CameraCharacteristics cc = null;
+
+        MeteringRectangle focusArea;
+        try
+        {
+            cc = cm.getCameraCharacteristics(cameraId);
+            focusArea = new MeteringRectangle(xCoordinate-100,yCoordinate-100,200,200, MeteringRectangle.METERING_WEIGHT_DONT_CARE);
+
+            captureSession.stopRepeating();
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+            // capture once to apply settings
+            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
+            state = STATE_PREVIEW;
+
+            if (meteringAreaAESupported(cc))
+            {
+                Log.d(TAG, "AE regions are suppored");
+                previewBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{focusArea});
+            }
+            if (meteringAreaAFSupported(cc))
+            {
+                Log.d(TAG, "AF regions are suppored");
+                previewBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{focusArea});
+                previewBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+            }
+
+            // capture again to set focus
+            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
+
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, null);
+
+            captureSession.setRepeatingRequest(previewBuilder.build(), captureCallback, backgroundHandler);
+        }
+        catch (CameraAccessException e)
+        {
+            Log.e(TAG, "Problem setting the touch baseed focused.\n" + e.getMessage());
+        }
     }
 
     /**
@@ -1011,18 +967,37 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         try
         {
             // This is how to tell the camera to trigger.
-            previewBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
-                    CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            previewBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
             // Tell #mCaptureCallback to wait for the precapture sequence to be set.
             state = STATE_WAITING_PRECAPTURE;
-            captureSession.capture(previewBuilder.build(), captureCallback,
-                    backgroundHandler);
-        } catch (CameraAccessException e)
+            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
+        }
+        catch (CameraAccessException e)
         {
             e.printStackTrace();
         }
     }
 
+    private boolean meteringAreaAESupported(CameraCharacteristics cc)
+    {
+        Integer value = cc.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE);
+        if (value != null)
+        {
+            return value >= 1;
+        }
+
+        return false;
+    }
+
+    private boolean meteringAreaAFSupported(CameraCharacteristics cc)
+    {
+        Integer value = cc.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF);
+        if (value != null)
+        {
+            return value >= 1;
+        }
+        return false;
+    }
 
     /**
      * Retrieves the JPEG orientation from the specified screen rotation.
@@ -1048,18 +1023,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         try
         {
             // Reset the auto-focus trigger
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
-                    CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
             setAutoFlash(previewBuilder);
-            captureSession.capture(previewBuilder.build(), captureCallback,
-                    backgroundHandler);
+            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
             // After this, the camera will go back to the normal state of preview.
             state = STATE_PREVIEW;
-            captureSession.setRepeatingRequest(previewRequest, captureCallback,
-                    backgroundHandler);
-        } catch (CameraAccessException e)
+            captureSession.setRepeatingRequest(previewRequest, captureCallback, backgroundHandler);
+        }
+        catch (CameraAccessException e)
         {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
         }
     }
 
@@ -1092,26 +1065,21 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     {
         if (flashSupported)
         {
-            requestBuilder.set(CaptureRequest.CONTROL_AE_MODE,
-                    CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            requestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
         }
     }
-
 
     /**
      * Compares two {@code Size}s based on their areas.
      */
     static class CompareSizesByArea implements Comparator<Size>
     {
-
         @Override
         public int compare(Size lhs, Size rhs)
         {
             // We cast here to ensure the multiplications won't overflow
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
-                    (long) rhs.getWidth() * rhs.getHeight());
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
         }
-
     }
 
     /**
@@ -1119,7 +1087,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     public static class ErrorDialog extends DialogFragment
     {
-
         private static final String ARG_MESSAGE = "message";
 
         public static ErrorDialog newInstance(String message)
@@ -1156,7 +1123,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
      */
     public static class ConfirmationDialog extends DialogFragment
     {
-
         @NonNull
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState)
@@ -1189,5 +1155,4 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                     .create();
         }
     }
-
 }
