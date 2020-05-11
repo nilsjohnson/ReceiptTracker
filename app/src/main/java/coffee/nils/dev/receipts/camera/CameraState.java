@@ -26,9 +26,4 @@ public enum CameraState
      * Picture was taken.
      */
     STATE_PICTURE_TAKEN,
-
-    /**
-     * User choosing to keep or discard image.
-     */
-    STATE_IMAGE_REVIEW
 }

@@ -1,54 +1,57 @@
 package coffee.nils.dev.receipts.data;
 
-import android.graphics.Bitmap;
-import android.media.Image;
 import android.util.Log;
+
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-
-
-import coffee.nils.dev.receipts.R;
+import java.io.ObjectOutputStream;
 
 /**
- * Saves a JPEG {@link Image} into the specified {@link File}.
+ * Saves a Mat to file.
  */
 class ImageSaver implements Runnable
 {
     private static String TAG = "ImageSaver";
-    /**
-     * The JPEG image
-     */
-    private final Bitmap image;
+    private final Mat image;
+    private final String path;
 
-    /**
-     * The file we save the image into.
-     */
-    private final File file;
-
-    ImageSaver(Bitmap image, File file)
+    ImageSaver(Mat image, File file)
     {
         this.image = image;
-        this.file = file;
+        this.path = file.toString();
     }
 
     @Override
-    public void run()
-    {
-        OutputStream outStream = null;
+    public void run() {
 
-        try
-        {
-            outStream = new FileOutputStream(file);
-            image.compress(Bitmap.CompressFormat.JPEG, 90, outStream);
-            outStream.flush();
-            outStream.close();
+        String serObj = new String("lols");
+
+        try {
+
+            FileOutputStream fileOut = new FileOutputStream(path);
+            ObjectOutputStream objectOut = new ObjectOutputStream(fileOut);
+            objectOut.writeObject(serObj);
+            objectOut.close();
+            System.out.println("The Object  was succesfully written to a file");
+
+        } catch (Exception ex) {
+            Log.e(TAG, ex.getMessage());
         }
-        catch (IOException e)
+
+
+        if(Imgcodecs.imwrite(path, image))
         {
-            Log.e(TAG, e.getMessage());
+            Log.d(TAG, path + " saved.");
+            // explicitly release right away to save resources
+            image.release();
+        }
+        else
+        {
+            Log.d(TAG, path + " not saved.");
         }
     }
+
 }

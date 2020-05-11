@@ -12,16 +12,15 @@ import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.AnimationDrawable;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
-import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -42,6 +41,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -51,13 +51,8 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
-
-import org.opencv.android.Utils;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.imgcodecs.Imgcodecs;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,28 +65,44 @@ import java.util.concurrent.TimeUnit;
 import coffee.nils.dev.receipts.R;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
-import coffee.nils.dev.receipts.util.ImageUtil;
 
 import static coffee.nils.dev.receipts.camera.CameraState.*;
-import static coffee.nils.dev.receipts.util.ImageUtil.*;
+import static coffee.nils.dev.receipts.util.ImageUtil.autoCrop;
+import static coffee.nils.dev.receipts.util.ImageUtil.getScaledBitmap;
+import static coffee.nils.dev.receipts.util.ImageUtil.imageToMat;
+import static org.opencv.imgproc.Imgproc.cvtColor;
 
-public class CameraFragment extends Fragment implements View.OnClickListener, ActivityCompat.OnRequestPermissionsResultCallback
+public class CameraFragment extends Fragment implements ActivityCompat.OnRequestPermissionsResultCallback
 {
-    static
-    {
-        System.loadLibrary("native-lib");
-        System.loadLibrary("opencv_java4");
-    }
+    private static final String TAG = "CameraFragment";
+    private static final String FRAGMENT_DIALOG = "Fragment Dialog" ;
 
-    public native long autoCrop(long addr);
+    // to access information about this receipt
+    private ReceiptDAO receiptDAO = ReceiptDAO.get(getContext());
+    private UUID receiptID;
+
+    // constants
+    private static final String ARG_RECEIPT_ID = "Receipt_ID";
+    private static final String ARG_REVIEW_EVENT_HANDLER = "Review_Event_Handler";
+    private static final int REQUEST_CAMERA_PERMISSION = 1;
+    private static final int MAX_PREVIEW_WIDTH = 1920;  // Max preview height guaranteed by Camera2 API
+    private static final int MAX_PREVIEW_HEIGHT = 1080; // Max preview width guarenteed by Camera2 API
+
+    // function to call to trigger reviewing the image
+    private CameraActivity.ReviewImage reviewCallback;
+
+    // to hold the image for the user to review it
+    private Bitmap processedImage;
+
+    // to display touch to focus animation
+    private AnimationDrawable apertureAnimation;
+    private ImageView imageViewAperture;
+
+    // spins while image is processed
+    private ProgressBar progressBarImageProc;
 
     // Conversion from screen rotation to JPEG orientationn
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    private static final int REQUEST_CAMERA_PERMISSION = 1;
-    private static final String FRAGMENT_DIALOG = "dialog";
-
-    private ProgressBar progressBar;
-
     static
     {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -100,60 +111,215 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
 
-    private ReceiptDAO receiptDAO = ReceiptDAO.get(getContext());
-    private UUID receiptID;
-    private static final String ARG_RECEIPT_ID = "Receipt_ID";
-    private static final String ARG_REVIEW_EVENT_HANDLER = "Review_Event_Handler";
+    // For camera capture
+    private CameraDevice cameraDevice;
+    private String cameraId;
+    private int sensorOrientation;
+    private boolean flashSupported;
+    private CameraCaptureSession captureSession;
+    private final CameraDevice.StateCallback callbackState = new CameraStateCallbacks();
+    private CameraCaptureSession.CaptureCallback captureCallback = new CaptureCallback();
+    private CaptureRequest.Builder captureBuilder;
+    private CaptureRequest captureRequest;
+    // to prevent the app from exiting before closing the camera.
+    private Semaphore cameraOpenCloseLock = new Semaphore(1);
 
-    private static final String TAG = "CameraFragment";
+    // for camera preview
+    private AutoFitTextureView textureView;
+    private Size previewSize;
+    private final TextureView.SurfaceTextureListener surfaceTextureListener = new SurfaceTextureCallbacks();
+
+    // to keep track of what the program should be doing...
+    private CameraState state = STATE_PREVIEW;
+
+    // for reading the image after capture
+    private ImageReader imageReader;
+    private final ImageReader.OnImageAvailableListener onImageAvailableListener = new ImageAvailableCallback();
+
+    // for things that shouldn't block the UI thread
+    private HandlerThread backgroundThread;
+    private Handler backgroundHandler;
 
 
-     //Max preview height and width that is guaranteed by Camera2 API
-    private static final int MAX_PREVIEW_WIDTH = 1920;
-    private static final int MAX_PREVIEW_HEIGHT = 1080;
+    @Override
+    public void onCreate(Bundle savedInstanceState)
+    {
+        super.onCreate(savedInstanceState);
+
+        if (getArguments() != null)
+        {
+            receiptID = (UUID) getArguments().getSerializable(ARG_RECEIPT_ID);
+            reviewCallback = (CameraActivity.ReviewImage) getArguments().getSerializable(ARG_REVIEW_EVENT_HANDLER);
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
+    {
+        return inflater.inflate(R.layout.fragment_camera2, container, false);
+    }
+
+    @Override
+    public void onViewCreated(final View view, Bundle savedInstanceState)
+    {
+        if (savedInstanceState != null)
+        {
+            reviewCallback = (CameraActivity.ReviewImage) savedInstanceState.getSerializable(ARG_REVIEW_EVENT_HANDLER);
+            receiptID = (UUID) savedInstanceState.getSerializable(ARG_RECEIPT_ID);
+        }
+
+        view.findViewById(R.id.btn_take_picture).setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                takePicture();
+            }
+        });
+        textureView = (AutoFitTextureView) view.findViewById(R.id.texture);
+        progressBarImageProc = view.findViewById(R.id.progressBar_cropping);
+        progressBarImageProc.setVisibility(ProgressBar.INVISIBLE);
+
+        imageViewAperture = (ImageView) view.findViewById(R.id.imageView_aperture);
+        imageViewAperture.setBackgroundResource(R.drawable.apperature_focus);
+        apertureAnimation = (AnimationDrawable) imageViewAperture.getBackground();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle instanceState)
+    {
+        super.onSaveInstanceState(instanceState);
+        instanceState.putSerializable(ARG_RECEIPT_ID, receiptID);
+        instanceState.putSerializable(ARG_REVIEW_EVENT_HANDLER, reviewCallback);
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        Log.d(TAG, "On Resume Called.");
+        startBackgroundThread();
+
+        // When the screen is turned off and turned back on, the SurfaceTexture is already
+        // available, and "onSurfaceTextureAvailable" will not be called. In that case, we can open
+        // a camera and start preview from here (otherwise, we wait until the surface is ready in
+        // the SurfaceTextureListener).
+        if (textureView.isAvailable())
+        {
+            openCamera(textureView.getWidth(), textureView.getHeight());
+        }
+        else
+        {
+            textureView.setSurfaceTextureListener(surfaceTextureListener);
+        }
+    }
+
+    @Override
+    public void onPause()
+    {
+        closeCamera();
+        stopBackgroundThread();
+        super.onPause();
+    }
 
     /**
-     * {@link TextureView.SurfaceTextureListener} handles several lifecycle events on a
-     * {@link TextureView}.
+     * Defines callbacks from camera capture session
      */
-    private final TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener()
+    private class CaptureCallback extends CameraCaptureSession.CaptureCallback
     {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height)
+        /**
+         * @param result of capture session
+         */
+        private void process(CaptureResult result)
         {
-            openCamera(width, height);
+            //Log.d(TAG, "State @ process: " + state.toString());
+            switch (state)
+            {
+                case STATE_PREVIEW:
+                    break;
+
+                case STATE_WAITING_LOCK:
+                {
+                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+                    if (afState == null)
+                    {
+                        captureStillPicture();
+                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState
+                            || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState)
+                    {
+                        // CONTROL_AE_STATE can be null on some devices
+                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                        if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED)
+                        {
+                            state = STATE_PICTURE_TAKEN;
+                            captureStillPicture();
+                        } else
+                        {
+                            runPrecaptureSequence();
+                        }
+                    }
+                    break;
+                }
+                case STATE_WAITING_PRECAPTURE:
+                {
+                    // CONTROL_AE_STATE can be null on some devices
+                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                    if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE
+                            || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED)
+                    {
+                        state = STATE_WAITING_NON_PRECAPTURE;
+                    }
+                    break;
+                }
+                case STATE_WAITING_NON_PRECAPTURE:
+                {
+                    // CONTROL_AE_STATE can be null on some devices
+                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE)
+                    {
+                        state = STATE_PICTURE_TAKEN;
+                        captureStillPicture();
+                    }
+                    break;
+                }
+            }
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height)
+        public void onCaptureProgressed(@NonNull CameraCaptureSession session,
+                                        @NonNull CaptureRequest request,
+                                        @NonNull CaptureResult partialResult)
+        { process(partialResult); }
+
+        @Override
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                       @NonNull CaptureRequest request,
+                                       @NonNull TotalCaptureResult result)
+        { process(result); }
+    }
+
+    /**
+     * Lock the focus as the first step for a still image capture.
+     */
+    private void lockFocus()
+    {
+        try
         {
-            configureTransform(width, height);
+            // This is how to tell the camera to lock focus.
+            captureBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
+            state = STATE_WAITING_LOCK;
+            captureSession.capture(captureBuilder.build(), captureCallback, backgroundHandler);
         }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) { return true; }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture texture) { }
-    };
-
-    /** ID of the current {@link CameraDevice} */
-    private String cameraId;
-
-    /** An {@link AutoFitTextureView} for camera preview.*/
-    private AutoFitTextureView textureView;
-
-    /** A {@link CameraCaptureSession } for camera preview.*/
-    private CameraCaptureSession captureSession;
-
-    /** A reference to the opened {@link CameraDevice}.*/
-    private CameraDevice cameraDevice;
-
-    /** The {@link android.util.Size} of camera preview.*/
-    private Size previewSize;
-
-    /** {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.*/
-    private final CameraDevice.StateCallback callbackState = new CameraDevice.StateCallback()
+        catch (CameraAccessException e)
+        {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+    
+    /**
+     Camera State Callback Methods
+     */
+    private class CameraStateCallbacks extends CameraDevice.StateCallback
     {
         @Override
         public void onOpened(@NonNull CameraDevice cameraDevice)
@@ -184,138 +350,56 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                 activity.finish();
             }
         }
+    }
+    
+    /*
+    Callbacks for the AutoFitTextureView
+     */
+    private class SurfaceTextureCallbacks implements TextureView.SurfaceTextureListener
+    {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height)
+        { openCamera(width, height); }
 
-    };
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height)
+        { configureTransform(width, height); }
 
-    /** An additional thread for running tasks that shouldn't block the UI.*/
-    private HandlerThread backgroundThread;
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) { return true; }
 
-    /** A {@link Handler} for running tasks in the background.*/
-    private Handler backgroundHandler;
-
-    /** An {@link ImageReader} that handles still image capture.*/
-
-    private ImageReader imageReader;
-    private Bitmap bitmap;
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture texture) { }
+    }
 
     /**
-     * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
-     * still image is ready to be saved.
+     * Callback for when an image was taken
      */
-    private final ImageReader.OnImageAvailableListener onImageAvailableListener = new ImageReader.OnImageAvailableListener()
+    private class ImageAvailableCallback implements ImageReader.OnImageAvailableListener
     {
         @Override
         public void onImageAvailable(ImageReader reader)
         {
+            // get the image, covert to Mat, and get rid of the Image immediately to save resources
             Image image = reader.acquireLatestImage();
-            // image to byte array
-            ByteBuffer bb = image.getPlanes()[0].getBuffer();
-            byte[] data = new byte[bb.remaining()];
-            bb.get(data);
+            Mat mat = imageToMat(image);
+            image.close();
 
-            Mat mat = Imgcodecs.imdecode(new MatOfByte(data), Imgcodecs.IMREAD_UNCHANGED);
-            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
-            Mat cropped = new Mat(addr);
-            bitmap = ImageUtil.getEmptyBitmap(cropped);
-            Utils.matToBitmap(cropped, bitmap);
+            // crop out the non-receipt sections
+            mat = autoCrop(mat);
 
+            // make this available to show user
+            processedImage = getScaledBitmap(mat, getActivity());
+
+            // save this image for the current receipt on another thread
             Receipt r = receiptDAO.getReceiptById(receiptID);
-            backgroundHandler.post(receiptDAO.makeImageSaver(bitmap, r.getFileName()));
+            backgroundHandler.post(receiptDAO.makeImageSaver(mat, r.getFileName()));
+
+            // review this receipt
+            reviewCallback.startReview(processedImage, receiptDAO.getReceiptById(receiptID).getFileName());
         }
-
-    };
-
-    /** {@link CaptureRequest.Builder} for the camera preview */
-    private CaptureRequest.Builder previewBuilder;
-
-    /** {@link CaptureRequest} generated by {@link #previewBuilder} */
-    private CaptureRequest previewRequest;
-
-    /** The current state of camera state for taking pictures. */
-    private CameraState state = STATE_PREVIEW;
-
-    /**A {@link Semaphore} to prevent the app from exiting before closing the camera. */
-    private Semaphore cameraOpenCloseLock = new Semaphore(1);
-
-    /** Whether the current camera device supports Flash or not. */
-    private boolean flashSupported;
-
-    /** Orientation of the camera sensor */
-    private int sensorOrientation;
-
-    /** A {@link CameraCaptureSession.CaptureCallback} that handles events related to JPEG capture. */
-    private CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback()
-    {
-        private void process(CaptureResult result)
-        {
-            Log.d(TAG, "state @ time of callback: " + state.toString());
-            switch (state)
-            {
-                case STATE_PREVIEW:
-                {
-                    // We have nothing to do when the camera preview is working normally.
-                    break;
-                }
-                case STATE_WAITING_LOCK:
-                {
-                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-                    if (afState == null)
-                    {
-                        captureStillPicture();
-                    }
-                    else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState)
-                    {
-                        // CONTROL_AE_STATE can be null on some devices
-                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                        if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED)
-                        {
-                            state = STATE_PICTURE_TAKEN;
-                            captureStillPicture();
-                        }
-                        else
-                        {
-                            runPrecaptureSequence();
-                        }
-                    }
-                    break;
-                }
-                case STATE_WAITING_PRECAPTURE:
-                {
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED)
-                    {
-                        state = STATE_WAITING_NON_PRECAPTURE;
-                    }
-                    break;
-                }
-                case STATE_WAITING_NON_PRECAPTURE:
-                {
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE)
-                    {
-                        state = STATE_PICTURE_TAKEN;
-                        captureStillPicture();
-                    }
-                    break;
-                }
-            }
-        }
-
-        @Override
-        public void onCaptureProgressed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureResult partialResult)
-        {
-            process(partialResult);
-        }
-
-        @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
-        {
-            process(result);
-        }
-    };
-
+    }
+    
 
     /**
      * Capture a still picture. This method should be called when we get a response in
@@ -343,22 +427,19 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
             int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getOrientation(rotation));
 
-            CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback()
+            CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback()
             {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
                 {
-                    showToast("Saved");
-                    Log.d(TAG, "Saved");
                     unlockFocus();
-                    reviewAction.startReview(bitmap, receiptDAO.getReceiptById(receiptID).getFileName());
-
+                    Log.d(TAG, "onCaptureCompleted called. Focus unlocked.");
                 }
             };
 
             captureSession.stopRepeating();
             captureSession.abortCaptures();
-            captureSession.capture(captureBuilder.build(), CaptureCallback, null);
+            captureSession.capture(captureBuilder.build(), captureCallback, null);
         }
         catch (CameraAccessException e)
         {
@@ -366,11 +447,7 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         }
     }
 
-    /**
-     * Shows a {@link Toast} on the UI thread.
-     *
-     * @param text The message to show
-     */
+    // shows a toast on UI thread
     private void showToast(final String text)
     {
         final Activity activity = getActivity();
@@ -451,80 +528,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         return camFrag;
     }
 
-    private CameraActivity.ReviewImage reviewAction;
-
-    @Override
-    public void onCreate(Bundle savedInstanceState)
-    {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null)
-        {
-           receiptID = (UUID) getArguments().getSerializable(ARG_RECEIPT_ID);
-           reviewAction = (CameraActivity.ReviewImage) getArguments().getSerializable(ARG_REVIEW_EVENT_HANDLER);
-        }
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
-    {
-        return inflater.inflate(R.layout.fragment_camera2_basic, container, false);
-    }
-
-    @Override
-    public void onViewCreated(final View view, Bundle savedInstanceState)
-    {
-        view.findViewById(R.id.btn_take_picture).setOnClickListener(this);
-        textureView = (AutoFitTextureView) view.findViewById(R.id.texture);
-        progressBar = view.findViewById(R.id.progressBar_cropping);
-        progressBar.setVisibility(ProgressBar.INVISIBLE);
-
-        textureView.setOnTouchListener(new TextureView.OnTouchListener()
-        {
-            @Override
-            public boolean onTouch(View v, MotionEvent event)
-            {
-                int x = (int)event.getX();
-                int y = (int)event.getY();
-                focusArea(x, y);
-                return true;
-            }
-        });
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState)
-    {
-        super.onActivityCreated(savedInstanceState);
-    }
-
-    @Override
-    public void onResume()
-    {
-        super.onResume();
-        startBackgroundThread();
-
-        // When the screen is turned off and turned back on, the SurfaceTexture is already
-        // available, and "onSurfaceTextureAvailable" will not be called. In that case, we can open
-        // a camera and start preview from here (otherwise, we wait until the surface is ready in
-        // the SurfaceTextureListener).
-        if (textureView.isAvailable())
-        {
-            openCamera(textureView.getWidth(), textureView.getHeight());
-        }
-        else
-        {
-            textureView.setSurfaceTextureListener(mSurfaceTextureListener);
-        }
-    }
-
-    @Override
-    public void onPause()
-    {
-        closeCamera();
-        stopBackgroundThread();
-        super.onPause();
-    }
-
     private void requestCameraPermission()
     {
         if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA))
@@ -538,15 +541,13 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults)
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
         if (requestCode == REQUEST_CAMERA_PERMISSION)
         {
             if (grantResults.length != 1 || grantResults[0] != PackageManager.PERMISSION_GRANTED)
             {
-                ErrorDialog.newInstance(getString(R.string.request_permission))
-                        .show(getChildFragmentManager(), FRAGMENT_DIALOG);
+                ErrorDialog.newInstance(getString(R.string.request_permission)).show(getChildFragmentManager(), FRAGMENT_DIALOG);
             }
         }
         else
@@ -792,8 +793,8 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
             Surface surface = new Surface(texture);
 
             // We set up a CaptureRequest.Builder with the output Surface.
-            previewBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            previewBuilder.addTarget(surface);
+            captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            captureBuilder.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
             cameraDevice.createCaptureSession(Arrays.asList(surface, imageReader.getSurface()),
@@ -814,13 +815,13 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                             try
                             {
                                 // Auto focus should be continuous for camera preview.
-                                previewBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                                captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                                 // Flash is automatically enabled when necessary.
-                                setAutoFlash(previewBuilder);
+                                setAutoFlash(captureBuilder);
 
                                 // Finally, we start displaying the camera preview.
-                                previewRequest = previewBuilder.build();
-                                captureSession.setRepeatingRequest(previewRequest, captureCallback, backgroundHandler);
+                                captureRequest = captureBuilder.build();
+                                captureSession.setRepeatingRequest(captureRequest, captureCallback, backgroundHandler);
                             } catch (CameraAccessException e)
                             {
                                 e.printStackTrace();
@@ -828,16 +829,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                         }
 
                         @Override
-                        public void onConfigureFailed(
-                                @NonNull CameraCaptureSession cameraCaptureSession)
+                        public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession)
                         {
-                            showToast("Failed");
+                            Log.e(TAG, "Camera not setup for capture session");
                         }
                     }, null
             );
-        } catch (CameraAccessException e)
+        } 
+        catch (CameraAccessException e)
         {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
         }
     }
 
@@ -879,83 +880,17 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         {
             matrix.postRotate(180, centerX, centerY);
         }
+        
         textureView.setTransform(matrix);
     }
 
     /**
-     * Initiate a still image capture.
+     * Initiate image capture.
      */
     private void takePicture()
     {
-        progressBar.setVisibility(ProgressBar.VISIBLE);
+        progressBarImageProc.setVisibility(ProgressBar.VISIBLE);
         lockFocus();
-    }
-
-    private void focusArea(int xCoordinate, int yCoordinate)
-    {
-        Log.d(TAG, "focus called: state:" + state.toString());
-        if (cameraId == null) { return; }
-
-
-        CameraManager cm = (CameraManager)getActivity().getSystemService(Context.CAMERA_SERVICE);
-        CameraCharacteristics cc = null;
-
-        MeteringRectangle focusArea;
-        try
-        {
-            cc = cm.getCameraCharacteristics(cameraId);
-            focusArea = new MeteringRectangle(xCoordinate-100,yCoordinate-100,200,200, MeteringRectangle.METERING_WEIGHT_DONT_CARE);
-
-            captureSession.stopRepeating();
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-            // capture once to apply settings
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
-            state = STATE_PREVIEW;
-
-            if (meteringAreaAESupported(cc))
-            {
-                Log.d(TAG, "AE regions are suppored");
-                previewBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{focusArea});
-            }
-            if (meteringAreaAFSupported(cc))
-            {
-                Log.d(TAG, "AF regions are suppored");
-                previewBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, new MeteringRectangle[]{focusArea});
-                previewBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
-            }
-
-            // capture again to set focus
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
-
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, null);
-
-            captureSession.setRepeatingRequest(previewBuilder.build(), captureCallback, backgroundHandler);
-        }
-        catch (CameraAccessException e)
-        {
-            Log.e(TAG, "Problem setting the touch baseed focused.\n" + e.getMessage());
-        }
-    }
-
-    /**
-     * Lock the focus as the first step for a still image capture.
-     */
-    private void lockFocus()
-    {
-        try
-        {
-            // This is how to tell the camera to lock focus.
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-            // Tell #mCaptureCallback to wait for the lock.
-            state = STATE_WAITING_LOCK;
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
-        } catch (CameraAccessException e)
-        {
-            e.printStackTrace();
-        }
     }
 
     /**
@@ -967,36 +902,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         try
         {
             // This is how to tell the camera to trigger.
-            previewBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            captureBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+            //captureBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
             // Tell #mCaptureCallback to wait for the precapture sequence to be set.
             state = STATE_WAITING_PRECAPTURE;
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
+            captureSession.capture(captureBuilder.build(), captureCallback, backgroundHandler);
         }
         catch (CameraAccessException e)
         {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
         }
-    }
-
-    private boolean meteringAreaAESupported(CameraCharacteristics cc)
-    {
-        Integer value = cc.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE);
-        if (value != null)
-        {
-            return value >= 1;
-        }
-
-        return false;
-    }
-
-    private boolean meteringAreaAFSupported(CameraCharacteristics cc)
-    {
-        Integer value = cc.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF);
-        if (value != null)
-        {
-            return value >= 1;
-        }
-        return false;
     }
 
     /**
@@ -1023,41 +938,16 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
         try
         {
             // Reset the auto-focus trigger
-            previewBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-            setAutoFlash(previewBuilder);
-            captureSession.capture(previewBuilder.build(), captureCallback, backgroundHandler);
+            captureBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
+            setAutoFlash(captureBuilder);
+            captureSession.capture(captureBuilder.build(), captureCallback, backgroundHandler);
             // After this, the camera will go back to the normal state of preview.
             state = STATE_PREVIEW;
-            captureSession.setRepeatingRequest(previewRequest, captureCallback, backgroundHandler);
+            captureSession.setRepeatingRequest(captureRequest, captureCallback, backgroundHandler);
         }
         catch (CameraAccessException e)
         {
             Log.e(TAG, e.getMessage());
-        }
-    }
-
-    @Override
-    public void onClick(View view)
-    {
-        switch (view.getId())
-        {
-            case R.id.btn_take_picture:
-            {
-                takePicture();
-                break;
-            }
-            case R.id.info:
-            {
-                Activity activity = getActivity();
-                if (null != activity)
-                {
-                    new AlertDialog.Builder(activity)
-                            .setMessage(R.string.intro_message)
-                            .setPositiveButton(android.R.string.ok, null)
-                            .show();
-                }
-                break;
-            }
         }
     }
 
@@ -1115,7 +1005,6 @@ public class CameraFragment extends Fragment implements View.OnClickListener, Ac
                     })
                     .create();
         }
-
     }
 
     /**

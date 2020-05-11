@@ -19,6 +19,8 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import org.opencv.core.Mat;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -216,11 +218,18 @@ public abstract class DAO
         }
     }
 
-    public ImageSaver makeImageSaver(Bitmap image, String title)
+    public ImageSaver makeImageSaver(Mat image, String title)
     {
-        // TODO call mkdir to make sure directory exists
-        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), context.getResources().getString(R.string.app_name));
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath(), context.getResources().getString(R.string.app_name));
         File file = new File(dir, title);
+        if(dir.mkdirs())
+        {
+            Log.d(TAG, "Making " + dir.toString() + " succeeded");
+        }
+        else
+        {
+            Log.d(TAG, "Making " + dir.toString() + " did not succeed");
+        }
         return new ImageSaver(image, file);
     }
 
