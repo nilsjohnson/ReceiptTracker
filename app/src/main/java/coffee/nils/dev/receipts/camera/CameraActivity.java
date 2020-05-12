@@ -10,11 +10,13 @@ import java.util.UUID;
 
 import coffee.nils.dev.receipts.MainActivity;
 import coffee.nils.dev.receipts.R;
+import coffee.nils.dev.receipts.data.ReceiptDAO;
 
 public class CameraActivity extends AppCompatActivity
 {
     private static final String KEY_UUID = "receipt_ID";
     private UUID newReceiptID;
+    private ReceiptDAO receiptDAO = ReceiptDAO.getInstance(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -36,15 +38,16 @@ public class CameraActivity extends AppCompatActivity
 
     public class ReviewImage implements Serializable
     {
+
         public void startReview(Bitmap image, String imagePath)
         {
             ImageReviewFragment frag = ImageReviewFragment.newInstance(image, imagePath, new RedoImage(), new AcceptImage());
-
             getSupportFragmentManager()
                     .beginTransaction().
                     replace(R.id.container, frag)
                     .commit();
         }
+
     }
 
     public class RedoImage implements Serializable
@@ -72,6 +75,12 @@ public class CameraActivity extends AppCompatActivity
     {
         super.onSaveInstanceState(instanceState);
         instanceState.putSerializable(KEY_UUID, newReceiptID);
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+        finish();
     }
 
 }

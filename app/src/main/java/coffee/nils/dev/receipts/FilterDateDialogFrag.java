@@ -16,7 +16,6 @@ import android.widget.Toast;
 import com.crystal.crystalrangeseekbar.interfaces.OnRangeSeekbarChangeListener;
 import com.crystal.crystalrangeseekbar.widgets.CrystalRangeSeekbar;
 
-import java.util.Calendar;
 import java.util.Date;
 
 import coffee.nils.dev.receipts.data.ReceiptDAO;
@@ -34,16 +33,15 @@ public class FilterDateDialogFrag extends DialogFragment
     private TextView tvEndDate;
     private CrystalRangeSeekbar rangeSeekBar;
 
-    Date selectedMinDate;
-    Date selectedMaxDate;
+    private Date selectedMinDate;
+    private Date selectedMaxDate;
 
-    Date minDate;
-    Date maxDate;
+    private Date minDate;
+    private Date maxDate;
 
     private static final long TIME_FACTOR = 1;
 
-    ReceiptDAO receiptDAO = ReceiptDAO.get(this.getActivity());
-
+    ReceiptDAO receiptDAO = ReceiptDAO.getInstance(this.getActivity());
 
     public static FilterDateDialogFrag newInstance(Date minDate, Date maxDate)
     {

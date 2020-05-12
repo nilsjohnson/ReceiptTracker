@@ -4,10 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,17 +14,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import coffee.nils.dev.receipts.camera.CameraActivity;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
@@ -37,7 +30,7 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 {
     private static String TAG = "MainActivity";
     // to hold the listView of receipts, or the "no receipts" layout if there's no receipts
-    Fragment primaryFrag;
+    private Fragment primaryFrag;
 
     public final static String EXTRA_NEW_RECEIPT_ID = "coffee.nils.dev.purchasetracker.MainActivity.newReceiptId";
     public static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORATE = 1;
@@ -64,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 
         Log.d(TAG, "onCreate called");
         setContentView(R.layout.activity_main);
-        receiptDAO = ReceiptDAO.get(getApplicationContext());
+        receiptDAO = ReceiptDAO.getInstance(this);
 
         toolbar = findViewById(R.id.toolbar_main_menu);
         setSupportActionBar(toolbar);
@@ -94,13 +87,17 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 //                launchReceiptActivity(receipt, getApplicationContext());
 //                startActivity(captureImage);
 
+                // start the receipt activity
                 launchReceiptActivity(receipt, getApplicationContext());
 
+                // but have the camera activity appear on top of it...
                 Bundle bundle = new Bundle();
                 bundle.putSerializable(EXTRA_NEW_RECEIPT_ID, receipt.getId());
                 Intent intent = new Intent(getApplicationContext(), CameraActivity.class);
                 intent.putExtras(bundle);
                 startActivity(intent);
+                // remove any filter on the DAO so that if this new item shows.
+                receiptDAO.getFilter().chosenCategoryList = null;
 
             }
         });
@@ -119,7 +116,6 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
         super.onResume();
         Log.d(TAG, "on resume called");
         FragmentManager fm = getSupportFragmentManager();
-
 
         if(receiptDAO.getReceiptList().size() > 0)
         {
@@ -204,6 +200,11 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 
         if(id == R.id.action_filter_category)
         {
+            Log.d(TAG, "Number of DAOs: " + ReceiptDAO.numDAOs);
+            for (String str : receiptDAO.getCategoryList())
+            {
+                Log.d(TAG, str);
+            }
             FragmentManager fm = getSupportFragmentManager();
             FilterCategoryDialogFrag frag = FilterCategoryDialogFrag.newInstance();
             frag.show(fm, FilterCategoryDialogFrag.TAG);
@@ -220,7 +221,6 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
 
         updateUIAfterFilter();
     }
-
 
     @Override
     public void onCategoriesSelected(ArrayList<String> categoryList)

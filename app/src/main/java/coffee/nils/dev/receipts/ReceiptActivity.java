@@ -29,13 +29,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentManager;
 
-import org.opencv.android.Utils;
-import org.opencv.core.Mat;
-
 import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -49,25 +43,13 @@ import coffee.nils.dev.receipts.util.DateTools;
 import coffee.nils.dev.receipts.util.ImageUtil;
 import coffee.nils.dev.receipts.util.receiptReader.ReceiptReader;
 
-
 public class ReceiptActivity extends AppCompatActivity
 {
     private static final String TAG = "ReceiptActivity";
-    private ReceiptReader receiptReader;
-
-    static
-    {
-        System.loadLibrary("native-lib");
-        System.loadLibrary("opencv_java4");
-    }
-
-    public native long autoCrop(long addr);
-
     private static final String DIALOG_DATE = "DialogDate";
 
+    // UI components
     private ImageView imageView;
-    private File photoFile;
-
     private Toolbar toolbar;
     private EditText editTextName;
     private EditText editTextTotalAmount;
@@ -76,8 +58,10 @@ public class ReceiptActivity extends AppCompatActivity
     private Button btnDelete;
     private AutoCompleteTextView autoCompleteTextViewCategory;
 
-    private ReceiptDAO dao;
-
+    // things relating to the receipt
+    private ReceiptDAO receiptDAO;
+    private ReceiptReader receiptReader;
+    private File photoFile;
     Receipt receipt;
     boolean receiptChanged = false;
     boolean validName = true;
@@ -88,10 +72,10 @@ public class ReceiptActivity extends AppCompatActivity
     // We dont directly update the receipt, until the user
     // presses save or the back button. This prevents the DB and the cache from
     // being out of sync.
-    String storeName;
-    double totalAmount;
-    Date date;
-    String category;
+    private String storeName;
+    private double totalAmount;
+    private Date date;
+    private String category;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -260,37 +244,30 @@ public class ReceiptActivity extends AppCompatActivity
         }
 
         // set the view and get the ReceiptDAO
-        dao = ReceiptDAO.get(this.getApplicationContext());
+        receiptDAO = ReceiptDAO.getInstance(this.getApplicationContext());
         setContentView(R.layout.activity_receipt);
 
         // get the reciept
         UUID receiptId = (UUID) getIntent().getSerializableExtra(MainActivity.EXTRA_NEW_RECEIPT_ID);
-        receipt = dao.getReceiptById(receiptId);
+        receipt = receiptDAO.getReceiptById(receiptId);
 
         // get the image
-        photoFile = dao.getPhotoFile(receipt);
+        photoFile = receiptDAO.getPhotoFile(receipt);
         // if there is no photo, we assume the user canceled while taking the photo
         // so we delete this receipt and go back to the calling activity
         if(!photoFile.exists())
         {
             Log.d(TAG, "Photo file not found. Deleting receipt: " + receiptId.toString());
-            dao.deleteReceipt(receiptId);
+            receiptDAO.deleteReceipt(receiptId);
+            receipt = null;
             finish();
             return;
         }
         Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
 
         // set the image
-        // if this is the first time showing reciept, autocrop and autofill it
         if(!receipt.hasBeenReviewd())
         {
-//            Mat mat = new Mat();
-//            Utils.bitmapToMat(bitmap, mat);
-//            long addr = autoCrop(autoCrop(mat.getNativeObjAddr()));
-//            Mat cropped = new Mat(addr);
-//            bitmap = ImageUtil.getEmptyBitmap(cropped);
-//            Utils.matToBitmap(cropped, bitmap);
-
             // try to guess values;
             receiptReader = new ReceiptReader(bitmap, this);
             receipt.setStoreName(receiptReader.getStoreName());
@@ -300,21 +277,8 @@ public class ReceiptActivity extends AppCompatActivity
             Toast toast = Toast.makeText(getApplicationContext(),"Please Review This Information", Toast.LENGTH_SHORT);
             toast.show();
 
-            try
-            {
-                dao.saveImage(bitmap, receipt.getFileName());
-
-                photoFile = dao.getPhotoFile(receipt);
-                bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
-            }
-            catch (Exception e)
-            {
-                Log.e(TAG, "Problem saving resized bitmap as a jpg. Check Permissions.\n" + e.getMessage());
-            }
-
             // try to figure out the category
-            receipt.setCategory(dao.getCategory(receiptReader.getStoreName()));
-
+            receipt.setCategory(receiptDAO.getCategory(receiptReader.getStoreName()));
         }
 
         // initialize these so they get saved correctly if not changed
@@ -329,7 +293,7 @@ public class ReceiptActivity extends AppCompatActivity
 
         // set the ImageView
         imageView = (ImageView) findViewById(R.id.imageView_receipt);
-        photoFile = dao.getPhotoFile(receipt);
+        photoFile = receiptDAO.getPhotoFile(receipt);
         imageView.setImageBitmap(bitmap);
 
         // set the name related things
@@ -345,7 +309,7 @@ public class ReceiptActivity extends AppCompatActivity
         // set the autocompleteEditText
         autoCompleteTextViewCategory = (AutoCompleteTextView) findViewById(R.id.autoCompleteTextView);
         autoCompleteTextViewCategory.setText(category);
-        UpdateCategoryListener listener = new UpdateCategoryListener(this, dao.getCategoryList());
+        UpdateCategoryListener listener = new UpdateCategoryListener(this, receiptDAO.getCategoryList());
         autoCompleteTextViewCategory.addTextChangedListener(listener);
         autoCompleteTextViewCategory.setOnItemClickListener(listener);
         autoCompleteTextViewCategory.setThreshold(0);
@@ -366,7 +330,6 @@ public class ReceiptActivity extends AppCompatActivity
         btnDelete = (Button) findViewById(R.id.button_delete);
         btnDelete.setOnClickListener(new DeleteButtonListener());
     }
-
 
     @Override
     public void onBackPressed()
@@ -410,6 +373,21 @@ public class ReceiptActivity extends AppCompatActivity
         }
     }
 
+    /**
+     * In the event this gets called, whatever valid information entered will be saved.
+     * This means that the ReceiptReader will parse the receipt again if receipt.hasBeenReviewed()
+     * is false. Calling this method, however, ensures that receipts, won't be in the database with
+     * empty fields. (ex: Its better to have an incorrect store name than an empty string from a UI
+     * standpoint)
+     */
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+        Log.d(TAG, "On Destroy Called");
+        writeUpdate();
+    }
+
     private void putDateOnButton(Date d)
     {
         btnDate.setText(DateTools.toSimpleFormat(d));
@@ -419,7 +397,7 @@ public class ReceiptActivity extends AppCompatActivity
     {
         // if this was the users first time looking at this receipt, mark it as read and
         // "teach" this receipt to the reader
-        if(receipt.hasBeenReviewd() == false)
+        if(!receipt.hasBeenReviewd())
         {
             receipt.setHasBeenReviewed(true);
             receiptChanged = true;
@@ -433,12 +411,6 @@ public class ReceiptActivity extends AppCompatActivity
             if(validAmount && validName && validDate)
             {
                 // update the receipt
-                receipt.setTotalAmount(totalAmount);
-                receipt.setStoreName(storeName);
-                receipt.setDate(date);
-                receipt.setCategory(category);
-                // save it
-                dao.updateReceipt(receipt);
                 Toast toast = Toast.makeText(getApplicationContext(),R.string.saved,Toast. LENGTH_SHORT);
                 toast.show();
                 finish();
@@ -463,7 +435,7 @@ public class ReceiptActivity extends AppCompatActivity
                                 }
                                 if(!validDate)
                                 {
-                                    // TODO
+                                    // TODO..if we decide to validate dates.
                                 }
                                 break;
                         }
@@ -479,10 +451,27 @@ public class ReceiptActivity extends AppCompatActivity
         {
             finish();
         }
-
-
     }
 
+    /**
+     * Saves current input to the database
+     */
+    private void writeUpdate()
+    {
+        // receipt may be null if it was deleted.
+        if(receipt != null)
+        {
+            receipt.setTotalAmount(totalAmount);
+            receipt.setStoreName(storeName);
+            receipt.setDate(date);
+            receipt.setCategory(category);
+            receiptDAO.updateReceipt(receipt);
+        }
+    }
+
+    /**
+     * Deletes this receipt from the database and finishes the activity.
+     */
     private void deleteReceipt()
     {
         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener()
@@ -493,7 +482,8 @@ public class ReceiptActivity extends AppCompatActivity
                 switch (choice)
                 {
                     case DialogInterface.BUTTON_POSITIVE:
-                        dao.deleteReceipt(receipt.getId());
+                        receiptDAO.deleteReceipt(receipt.getId());
+                        receipt = null;
                         Toast toast = Toast.makeText(getApplicationContext(), R.string.receipt_deleted, Toast.LENGTH_SHORT);
                         toast.show();
                         finish();
@@ -524,21 +514,16 @@ public class ReceiptActivity extends AppCompatActivity
     {
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_share)
         {
-                Uri imageUri = FileProvider.getUriForFile(this, dao.FILES_AUTHORITY, photoFile);
-                Intent intent = new Intent(Intent.ACTION_SEND);
-                intent.setAction(Intent.ACTION_SEND);
-                intent.putExtra(Intent.EXTRA_STREAM, imageUri);
-                intent.setType("image/jpeg");
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                startActivity(Intent.createChooser(intent, getResources().getText(R.string.send_to)));
-
-
-
-
+            Uri imageUri = FileProvider.getUriForFile(this, receiptDAO.FILES_AUTHORITY, photoFile);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setAction(Intent.ACTION_SEND);
+            intent.putExtra(Intent.EXTRA_STREAM, imageUri);
+            intent.setType("image/jpeg");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, getResources().getText(R.string.send_to)));
             return true;
         }
 
@@ -548,7 +533,6 @@ public class ReceiptActivity extends AppCompatActivity
     @Override
     public void onActivityResult(int reqCode, int resultCode, Intent data)
     {
-
         super.onActivityResult(reqCode, resultCode, data);
     }
 }

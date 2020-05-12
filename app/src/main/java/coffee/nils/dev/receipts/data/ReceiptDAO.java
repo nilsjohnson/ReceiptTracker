@@ -45,14 +45,18 @@ public class ReceiptDAO extends DAO
     private Receipt highestDateReceipDate;
 
 
+    // TODO Delete this..
+    public static int numDAOs = 0;
+
     /**
      * @param context the application context
      * @return The, one and only, ReceiptDAO
      */
-    public static ReceiptDAO get(Context context)
+    public static synchronized ReceiptDAO getInstance(Context context)
     {
         if (receiptDAO == null)
         {
+            numDAOs++;
             receiptDAO = new ReceiptDAO(context);
         }
 
@@ -77,7 +81,6 @@ public class ReceiptDAO extends DAO
             while(!cursor.isAfterLast())
             {
                 Receipt r = cursor.getReceipt();
-                //receiptList.add(r);
                 addReceipt(r);
                 addCategory(r.getCategory());
 
@@ -178,11 +181,12 @@ public class ReceiptDAO extends DAO
         return false;
     }
 
+
     private boolean isInChosenCategory(Receipt r, ArrayList<String> chosenCategoryList)
     {
         String receiptCategory = r.getCategory();
 
-        if(receiptCategory == null)
+        if(receiptCategory == null || receiptCategory.trim().equals(""))
         {
             receiptCategory = context.getResources().getString(R.string.uncategorized);
         }
@@ -231,7 +235,8 @@ public class ReceiptDAO extends DAO
                     break;
 
                 case BY_DATE_AND_CATEGORY:
-                    if((isInRange(r, filter.startDate, filter.endDate)) && isInChosenCategory(r, filter.chosenCategoryList))
+                    if(isInRange(r, filter.startDate, filter.endDate)
+                            && isInChosenCategory(r, filter.chosenCategoryList))
                     {
                         filteredReceiptList.add(r);
                     }
@@ -285,8 +290,7 @@ public class ReceiptDAO extends DAO
        addCategory(receipt.getCategory());
        addStoreCategoryPair(receipt.getStoreName(), receipt.getCategory());
 
-       // if the receipt was the highest or lowest, we now no longe
-        // can trust our high low flags, so unfortunetly we have to recheck each one
+       // if the receipt was the highest or lowest, we recalculate
        if(receipt == highestDateReceipDate || receipt == lowestDateReceipt)
        {
             resetStaleData();
@@ -299,7 +303,8 @@ public class ReceiptDAO extends DAO
     }
 
     /**
-     * iterates over entire receipt list to set the highest and lowest.
+     * iterates over entire receipt list to set the highest and lowest, and creates
+     * category list.
      */
     private void resetStaleData()
     {
@@ -319,7 +324,6 @@ public class ReceiptDAO extends DAO
                 lowestDateReceipt = receipt;
             }
 
-            // add category
             addCategory(receipt.getCategory());
         }
     }
@@ -382,18 +386,16 @@ public class ReceiptDAO extends DAO
 
     private void addCategory(String category)
     {
-        if(category != null && !categoryList.contains(category))
+        if(category == null || category.trim().equals(""))
+        {
+            category = context.getResources().getString(R.string.uncategorized);
+        }
+
+        if(!categoryList.contains(category))
         {
             categoryList.add(category);
             return;
         }
-
-        String uncategorized = context.getResources().getString(R.string.uncategorized);
-        if(category == null && !categoryList.contains(uncategorized))
-        {
-            categoryList.add(uncategorized);
-        }
-
     }
 
     private void addStoreCategoryPair(String storeName, String category)

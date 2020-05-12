@@ -14,7 +14,6 @@ import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
-import android.graphics.drawable.AnimationDrawable;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -24,7 +23,6 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
-import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -36,12 +34,10 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -70,15 +66,18 @@ import static coffee.nils.dev.receipts.camera.CameraState.*;
 import static coffee.nils.dev.receipts.util.ImageUtil.autoCrop;
 import static coffee.nils.dev.receipts.util.ImageUtil.getScaledBitmap;
 import static coffee.nils.dev.receipts.util.ImageUtil.imageToMat;
-import static org.opencv.imgproc.Imgproc.cvtColor;
 
+
+/**
+ * This fragment handles the camera2 callbacks, allowing the user to take pictures of receipts.
+ */
 public class CameraFragment extends Fragment implements ActivityCompat.OnRequestPermissionsResultCallback
 {
     private static final String TAG = "CameraFragment";
     private static final String FRAGMENT_DIALOG = "Fragment Dialog" ;
 
     // to access information about this receipt
-    private ReceiptDAO receiptDAO = ReceiptDAO.get(getContext());
+    private ReceiptDAO receiptDAO = ReceiptDAO.getInstance(getContext());
     private UUID receiptID;
 
     // constants
@@ -94,14 +93,10 @@ public class CameraFragment extends Fragment implements ActivityCompat.OnRequest
     // to hold the image for the user to review it
     private Bitmap processedImage;
 
-    // to display touch to focus animation
-    private AnimationDrawable apertureAnimation;
-    private ImageView imageViewAperture;
-
     // spins while image is processed
     private ProgressBar progressBarImageProc;
 
-    // Conversion from screen rotation to JPEG orientationn
+    // Conversion from screen rotation to JPEG orientation
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static
     {
@@ -179,10 +174,6 @@ public class CameraFragment extends Fragment implements ActivityCompat.OnRequest
         textureView = (AutoFitTextureView) view.findViewById(R.id.texture);
         progressBarImageProc = view.findViewById(R.id.progressBar_cropping);
         progressBarImageProc.setVisibility(ProgressBar.INVISIBLE);
-
-        imageViewAperture = (ImageView) view.findViewById(R.id.imageView_aperture);
-        imageViewAperture.setBackgroundResource(R.drawable.apperature_focus);
-        apertureAnimation = (AnimationDrawable) imageViewAperture.getBackground();
     }
 
     @Override
@@ -508,10 +499,12 @@ public class CameraFragment extends Fragment implements ActivityCompat.OnRequest
         if (bigEnough.size() > 0)
         {
             return Collections.min(bigEnough, new CompareSizesByArea());
-        } else if (notBigEnough.size() > 0)
+        }
+        else if (notBigEnough.size() > 0)
         {
             return Collections.max(notBigEnough, new CompareSizesByArea());
-        } else
+        }
+        else
         {
             Log.e(TAG, "Couldn't find any suitable preview size");
             return choices[0];
@@ -770,9 +763,10 @@ public class CameraFragment extends Fragment implements ActivityCompat.OnRequest
             backgroundThread.join();
             backgroundThread = null;
             backgroundHandler = null;
-        } catch (InterruptedException e)
+        }
+        catch (InterruptedException e)
         {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
         }
     }
 

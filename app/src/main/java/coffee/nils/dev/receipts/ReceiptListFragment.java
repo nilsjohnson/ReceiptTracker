@@ -1,7 +1,5 @@
 package coffee.nils.dev.receipts;
 
-import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -14,14 +12,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import java.util.Date;
 import java.util.List;
 
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
 import coffee.nils.dev.receipts.util.DateTools;
-
-import static coffee.nils.dev.receipts.MainActivity.EXTRA_NEW_RECEIPT_ID;
 
 
 /**
@@ -113,7 +108,7 @@ public class ReceiptListFragment extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
     {
-        dao = ReceiptDAO.get(getActivity());
+        dao = ReceiptDAO.getInstance(getActivity());
         View view = inflater.inflate(R.layout.fragment_receipt_list, container, false);
         recyclerView = (RecyclerView) view.findViewById(R.id.recyclerView_receipts);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));

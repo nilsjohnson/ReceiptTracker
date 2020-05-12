@@ -40,7 +40,6 @@ public abstract class DAO
     protected Context context;
     private static final String TAG = "DAO";
     protected SQLiteDatabase database;
-    protected ImageSaver imageSaver;
 
     public static final String FILES_AUTHORITY = "coffee.nils.dev.receipts.fileprovider";
 
@@ -124,46 +123,19 @@ public abstract class DAO
 
     public void deleteImage(String fileName)
     {
-        File file = new File(context.getFilesDir().toString() + "/" + fileName);
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath(), context.getResources().getString(R.string.app_name));
+        File file = new File(dir, fileName);
 
         if(file.delete())
         {
-            Log.d(TAG, fileName + " deleted succesffuly");
+            Log.d(TAG, fileName + "Deleted " + fileName + " successfully");
         }
         else
         {
-            Log.d(TAG, fileName + " failed to delete");
+            Log.d(TAG, fileName + "Failed to  deleted " + fileName + ".");
         }
     }
 
-    /**
-     * @param bitmap The bitmap holding the image
-     * @param filename The file's name, w/out the full path.
-     * @throws IOException Throws if file does not save correctly.
-     */
-/*    public void saveImage(Bitmap bitmap, String filename) throws IOException
-    {
-        OutputStream outStream = null;
-        File file = new File(context.getFilesDir().toString() + "/" + filename);
-
-        try
-        {
-            outStream = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outStream);
-            outStream.flush();
-            outStream.close();
-        }
-        catch (IOException e)
-        {
-            throw e;
-        }
-    }*/
-
-    /**
-     * @return The file containing the receipt's image.
-     * This method belongs to the ReceiptDAO and not the Receipt class because it requires the
-     * application context.
-     */
     public File getPhotoFile(Receipt receipt)
     {
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), context.getResources().getString(R.string.app_name));
@@ -171,65 +143,11 @@ public abstract class DAO
         return new File(dir, receipt.getFileName());
     }
 
-
-
-    public final void saveImage(Bitmap bitmap, String title) throws Exception
-    {
-        // Create a path where we will place our picture in the user's
-        // public pictures directory.  Note that you should be careful about
-        // what you place here, since the user often manages these files.  For
-        // pictures and other media owned by the application, consider
-        // Context.getExternalMediaDir().
-        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), context.getResources().getString(R.string.app_name));
-        File file = new File(dir, title);
-
-        try {
-            // Make sure the Pictures directory exists.
-            dir.mkdirs();
-
-            OutputStream outStream = null;
-
-            try
-            {
-                outStream = new FileOutputStream(file);
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outStream);
-                outStream.flush();
-                outStream.close();
-            }
-            catch (IOException e)
-            {
-                throw e;
-            }
-
-            // Tell the media scanner about the new file so that it is
-            // immediately available to the user.
-            MediaScannerConnection.scanFile(context,
-                    new String[] { file.toString() }, null,
-                    new MediaScannerConnection.OnScanCompletedListener() {
-                        public void onScanCompleted(String path, Uri uri) {
-                            Log.i("ExternalStorage", "Scanned " + path + ":");
-                            Log.i("ExternalStorage", "-> uri=" + uri);
-                        }
-                    });
-        } catch (IOException e) {
-            // Unable to create file, likely because external storage is
-            // not currently mounted.
-            Log.w("ExternalStorage", "Error writing " + file, e);
-        }
-    }
-
     public ImageSaver makeImageSaver(Mat image, String title)
     {
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).getAbsolutePath(), context.getResources().getString(R.string.app_name));
         File file = new File(dir, title);
-        if(dir.mkdirs())
-        {
-            Log.d(TAG, "Making " + dir.toString() + " succeeded");
-        }
-        else
-        {
-            Log.d(TAG, "Making " + dir.toString() + " did not succeed");
-        }
+        dir.mkdirs();
         return new ImageSaver(image, file);
     }
 

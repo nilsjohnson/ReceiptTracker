@@ -14,9 +14,7 @@ import android.widget.ImageView;
 import coffee.nils.dev.receipts.R;
 
 /**
- * A simple {@link Fragment} subclass.
- * Use the {@link ImageReviewFragment#newInstance} factory method to
- * create an instance of this fragment.
+ * Fragment to display the image to the user so they can accept or reject it.
  */
 public class ImageReviewFragment extends Fragment
 {

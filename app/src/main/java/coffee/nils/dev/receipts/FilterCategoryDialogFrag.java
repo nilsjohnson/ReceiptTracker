@@ -33,7 +33,7 @@ public class FilterCategoryDialogFrag extends DialogFragment
     private boolean[] checked;
 
     // for getting categories and current filters
-    private ReceiptDAO receiptDAO = ReceiptDAO.get(this.getContext());
+    private ReceiptDAO receiptDAO = ReceiptDAO.getInstance(this.getActivity());
 
     // to categories the user checks
     private ArrayList<String> selectedCategoryList = new ArrayList<>();
@@ -56,7 +56,6 @@ public class FilterCategoryDialogFrag extends DialogFragment
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
         // puts the category list into CharSequence[]
         // and if it is currently checked into the checked[]
         ArrayList<String> categoryList = receiptDAO.getCategoryList();

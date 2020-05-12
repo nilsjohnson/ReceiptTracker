@@ -10,6 +10,7 @@ import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.text.TextBlock;
 import com.google.android.gms.vision.text.TextRecognizer;
 
+import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -64,7 +65,7 @@ import static coffee.nils.dev.receipts.util.receiptReader.IdentifierType.TELPHON
  * and then ReceiptReader.resolve() to save the identifiers as belonging to the store.
  */
 
-public class ReceiptReader
+public class ReceiptReader implements Serializable
 {
     private static final String TAG = "ReceiptReader";
     public static final int KEY_MAX_LENGTH = 20;
@@ -113,7 +114,7 @@ public class ReceiptReader
 
     public ReceiptReader(Bitmap image, Context context)
     {
-        this.dao = ReceiptDAO.get(context);
+        this.dao = ReceiptDAO.getInstance(context);
         this.context = context;
         this.receiptImage = image;
         textRecognizer = new TextRecognizer.Builder(context).build();

@@ -6,8 +6,6 @@ import org.opencv.core.Mat;
 import org.opencv.imgcodecs.Imgcodecs;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
 
 /**
  * Saves a Mat to file.
@@ -26,22 +24,6 @@ class ImageSaver implements Runnable
 
     @Override
     public void run() {
-
-        String serObj = new String("lols");
-
-        try {
-
-            FileOutputStream fileOut = new FileOutputStream(path);
-            ObjectOutputStream objectOut = new ObjectOutputStream(fileOut);
-            objectOut.writeObject(serObj);
-            objectOut.close();
-            System.out.println("The Object  was succesfully written to a file");
-
-        } catch (Exception ex) {
-            Log.e(TAG, ex.getMessage());
-        }
-
-
         if(Imgcodecs.imwrite(path, image))
         {
             Log.d(TAG, path + " saved.");
