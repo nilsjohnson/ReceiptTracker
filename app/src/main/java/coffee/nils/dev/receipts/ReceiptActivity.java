@@ -343,10 +343,11 @@ public class ReceiptActivity extends AppCompatActivity
                 {
                     switch (choice)
                     {
+                        // if the user wants to save the changes
                         case DialogInterface.BUTTON_POSITIVE:
                             saveReceipt();
                             break;
-
+                        // if the user made accidental changes
                         case DialogInterface.BUTTON_NEGATIVE:
                             Toast toast = Toast.makeText(getApplicationContext(), R.string.no_changes, Toast.LENGTH_SHORT);
                             toast.show();
@@ -385,7 +386,12 @@ public class ReceiptActivity extends AppCompatActivity
     {
         super.onDestroy();
         Log.d(TAG, "On Destroy Called");
-        writeUpdate();
+        // this is to save unreviewed info to the db if the user closes the app
+        // the receipt will still be read again and resolved next time they view it.
+        if(receipt != null && !receipt.hasBeenReviewd())
+        {
+            writeUpdate();
+        }
     }
 
     private void putDateOnButton(Date d)
@@ -412,6 +418,7 @@ public class ReceiptActivity extends AppCompatActivity
             {
                 // update the receipt
                 Toast toast = Toast.makeText(getApplicationContext(),R.string.saved,Toast. LENGTH_SHORT);
+                writeUpdate();
                 toast.show();
                 finish();
             }

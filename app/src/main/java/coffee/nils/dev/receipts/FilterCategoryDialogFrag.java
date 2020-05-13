@@ -141,7 +141,7 @@ public class FilterCategoryDialogFrag extends DialogFragment
                         sendResult();
                     }
                 })
-                .setPositiveButton(R.string.apply_filter, new DialogInterface.OnClickListener()
+                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener()
                 {
                     @Override
                     public void onClick(DialogInterface dialog, int which)
