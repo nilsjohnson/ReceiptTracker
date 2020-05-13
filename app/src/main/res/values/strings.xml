@@ -5,7 +5,7 @@
     <string name="date_picker_title">Enter Date</string>
     <string name="amount">Total Amount</string>
     <string name="are_you_sure">Update Receipt?</string>
-    <string name="no">o</string>
+    <string name="no">no</string>
     <string name="yes">yes</string>
     <string name="saved">Receipt Updated</string>
     <string name="check_fields">Please Check Input</string>
