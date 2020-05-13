@@ -53,13 +53,6 @@ public class ReceiptBaseHelper extends SQLiteOpenHelper
                 CategoryHashTable.COLS.VALUE + " varchar(" + CategoryHashTable.MAX_FIELD_LENGTH_DEFAULT + ") " +
                 ")"
         );
-
-        Log.d(TAG, "Preloading Store Names into " + StoreNameHashTable.NAME);
-        for(AbstractMap.SimpleEntry entry : Constants.KNOWN_STORES)
-        {
-            ContentValues values = getStoreHashTableContentValues(entry);
-            db.insert(StoreNameHashTable.NAME, null, values);
-        }
     }
 
     @Override

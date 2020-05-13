@@ -4,7 +4,10 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -14,19 +17,23 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
-import coffee.nils.dev.receipts.camera.CameraActivity;
 import coffee.nils.dev.receipts.data.ReceiptDAO;
 import coffee.nils.dev.receipts.data.Receipt;
 
-public class MainActivity extends AppCompatActivity implements FilterDateDialogFrag.OnRangeChangeListener, FilterCategoryDialogFrag.OnFragmentInteractionListener
+public class MainActivity extends AppCompatActivity implements
+        FilterDateDialogFrag.OnRangeChangeListener,
+        FilterCategoryDialogFrag.OnFragmentInteractionListener
 {
     private static String TAG = "MainActivity";
     // to hold the listView of receipts, or the "no receipts" layout if there's no receipts
@@ -69,36 +76,26 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
             public void onClick(View v)
             {
                 Receipt receipt = receiptDAO.createReceipt();
-//                Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//
-//                Receipt receipt = receiptDAO.createReceipt();
-//                File photoFile = receiptDAO.getPhotoFile(receipt);
-//               // Uri uri = Uri.fromFile(photoFile);
-//                Uri uri = FileProvider.getUriForFile(getApplicationContext(), "coffee.nils.dev.receipts.fileprovider", photoFile);
-//                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
-//
-//                List<ResolveInfo> cameraActivities = getApplicationContext().getPackageManager().queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
-//
-//                for (ResolveInfo activity: cameraActivities)
-//                {
-//                    getApplicationContext().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-//                }
-//
-//                launchReceiptActivity(receipt, getApplicationContext());
-//                startActivity(captureImage);
+                boolean useAnotherApp = true;
 
-                // start the receipt activity
+                Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                File photoFile = receiptDAO.getPhotoFile(receipt);
+
+                Uri uri = FileProvider.getUriForFile(getApplicationContext(), "coffee.nils.dev.receipts.fileprovider", photoFile);
+                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+
+                List<ResolveInfo> cameraActivities = getApplicationContext().getPackageManager().queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
+
+                for (ResolveInfo activity : cameraActivities)
+                {
+                    getApplicationContext().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                }
+
                 launchReceiptActivity(receipt, getApplicationContext());
+                startActivity(captureImage);
 
-                // but have the camera activity appear on top of it...
-                Bundle bundle = new Bundle();
-                bundle.putSerializable(EXTRA_NEW_RECEIPT_ID, receipt.getId());
-                Intent intent = new Intent(getApplicationContext(), CameraActivity.class);
-                intent.putExtras(bundle);
-                startActivity(intent);
                 // remove any filter on the DAO so that if this new item shows.
-                receiptDAO.getFilter().chosenCategoryList = null;
-
+                receiptDAO.getFilter().reset();
             }
         });
     }
@@ -193,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements FilterDateDialogF
             {
                 if(receiptDAO.getReceiptList().size() > 0)
                 {
-                    Log.e(TAG, "There seems to be receipts, but highest or lowest date is not set. DAO should not allow this.");
+                    Log.wtf(TAG, "There seems to be receipts, but highest or lowest date is not set. DAO should not allow this.");
                 }
             }
         }

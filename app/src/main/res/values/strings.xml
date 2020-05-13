@@ -5,13 +5,12 @@
     <string name="date_picker_title">Enter Date</string>
     <string name="amount">Total Amount</string>
     <string name="are_you_sure">Update Receipt?</string>
-    <string name="no">no</string>
+    <string name="no">o</string>
     <string name="yes">yes</string>
     <string name="saved">Receipt Updated</string>
     <string name="check_fields">Please Check Input</string>
     <string name="ok">ok</string>
     <string name="spellchecker_name">storeNameSpellchecker</string>
-    <string name="subtype_generic">asdf</string>
     <string name="no_store_found">Please Enter Store Name</string>
     <string name="no_changes">No Changes Saved</string>
     <string name="delete">Delete</string>
@@ -35,12 +34,4 @@
     <string name="date_filter_applied">Date Filter Applied</string>
     <string name="showing_all_dates">Showing All Dates</string>
     <string name="uncategorized">uncategorized</string>
-    <string name="request_permission">allow?</string>
-    <string name="camera_error">Camera Error</string>
-    <string name="intro_message">welcome?</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="title_activity_main3">Main3Activity</string>
-    <string name="redo">Redo</string>
 </resources>

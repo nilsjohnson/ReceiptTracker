@@ -66,7 +66,6 @@ public class DatePickerFragment extends DialogFragment
         return fragment;
     }
 
-
     public DatePicker.OnDateChangedListener getDatePickerListener() {
         return this.datePickerListener;
     }
@@ -74,7 +73,6 @@ public class DatePickerFragment extends DialogFragment
     public void setDatePickerListener(DatePicker.OnDateChangedListener listener) {
         this.datePickerListener = listener;
     }
-
 }
 
 

@@ -35,5 +35,4 @@ class ImageSaver implements Runnable
             Log.d(TAG, path + " not saved.");
         }
     }
-
 }

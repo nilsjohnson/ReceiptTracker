@@ -20,7 +20,7 @@ import coffee.nils.dev.receipts.util.DateTools;
 
 
 /**
- * A simple {@link Fragment} subclass.
+ * For displaying the user's receipts
  */
 public class ReceiptListFragment extends Fragment
 {

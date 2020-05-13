@@ -144,6 +144,20 @@ public class ImageUtil
         return Imgcodecs.imdecode(new MatOfByte(data), Imgcodecs.IMREAD_UNCHANGED);
     }
 
+    public static Mat autoCrop(Bitmap bitmap)
+    {
+        Mat mat = new Mat();
+        Utils.bitmapToMat(bitmap, mat);
+        return autoCrop(mat);
+
+    }
+
+
+    public static Mat readMat(String path)
+    {
+        return Imgcodecs.imread(path);
+    }
+
     public static Mat autoCrop(Mat image)
     {
         long addr = autoCrop(image.getNativeObjAddr());

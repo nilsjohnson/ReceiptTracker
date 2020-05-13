@@ -4,6 +4,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
+/*
+User Receipt Object
+ */
 public class Receipt
 {
     private UUID id;

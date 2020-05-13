@@ -3,6 +3,9 @@ package coffee.nils.dev.receipts.data;
 import java.util.ArrayList;
 import java.util.Date;
 
+/**
+ * This class describes the list of receipts DAO should return.
+ */
 public class Filter
 {
     public Date startDate;
@@ -25,5 +28,12 @@ public class Filter
         }
 
         return FilterCase.NO_FILTER;
+    }
+
+    public void reset()
+    {
+        startDate = null;
+        endDate = null;
+        chosenCategoryList = null;
     }
 }

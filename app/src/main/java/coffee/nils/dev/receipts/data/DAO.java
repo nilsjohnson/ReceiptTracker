@@ -1,34 +1,24 @@
 package coffee.nils.dev.receipts.data;
 
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
-import android.media.Image;
-import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
-import android.os.ParcelFileDescriptor;
-import android.provider.MediaStore;
 import android.provider.MediaStore.*;
 import android.util.Log;
-
-import androidx.annotation.Nullable;
 
 import org.opencv.core.Mat;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.AbstractMap;
-import java.util.ArrayList;
 
 import coffee.nils.dev.receipts.R;
 

@@ -7,6 +7,8 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -29,6 +31,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.FragmentManager;
 
+import org.opencv.core.Mat;
+
 import java.io.File;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -43,6 +47,13 @@ import coffee.nils.dev.receipts.util.DateTools;
 import coffee.nils.dev.receipts.util.ImageUtil;
 import coffee.nils.dev.receipts.util.receiptReader.ReceiptReader;
 
+import static coffee.nils.dev.receipts.util.ImageUtil.autoCrop;
+import static coffee.nils.dev.receipts.util.ImageUtil.getScaledBitmap;
+import static coffee.nils.dev.receipts.util.ImageUtil.readMat;
+
+/**
+ * For when a user is looking at the receipt
+ */
 public class ReceiptActivity extends AppCompatActivity
 {
     private static final String TAG = "ReceiptActivity";
@@ -62,7 +73,8 @@ public class ReceiptActivity extends AppCompatActivity
     private ReceiptDAO receiptDAO;
     private ReceiptReader receiptReader;
     private File photoFile;
-    Receipt receipt;
+    private Bitmap bitmap;
+    private Receipt receipt;
     boolean receiptChanged = false;
     boolean validName = true;
     boolean validAmount = true;
@@ -76,6 +88,11 @@ public class ReceiptActivity extends AppCompatActivity
     private double totalAmount;
     private Date date;
     private String category;
+
+    // to save image cropped image if its the first time reviewing it
+    private Handler backgroundHandler;
+    private HandlerThread backgroundThread;
+    private Mat mat;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -263,11 +280,17 @@ public class ReceiptActivity extends AppCompatActivity
             finish();
             return;
         }
-        Bitmap bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
 
         // set the image
         if(!receipt.hasBeenReviewd())
         {
+            mat = readMat(photoFile.getPath());
+            mat = autoCrop(mat);
+            bitmap = getScaledBitmap(mat, this);
+
+            startBackgroundThread();
+            backgroundHandler.post(receiptDAO.makeImageSaver(mat, receipt.getFileName()));
+
             // try to guess values;
             receiptReader = new ReceiptReader(bitmap, this);
             receipt.setStoreName(receiptReader.getStoreName());
@@ -279,6 +302,10 @@ public class ReceiptActivity extends AppCompatActivity
 
             // try to figure out the category
             receipt.setCategory(receiptDAO.getCategory(receiptReader.getStoreName()));
+        }
+        else
+        {
+             bitmap = ImageUtil.getScaledBitmap(photoFile.getPath(), this);
         }
 
         // initialize these so they get saved correctly if not changed
@@ -385,6 +412,7 @@ public class ReceiptActivity extends AppCompatActivity
     protected void onDestroy()
     {
         super.onDestroy();
+        stopBackgroundThread();
         Log.d(TAG, "On Destroy Called");
         // this is to save unreviewed info to the db if the user closes the app
         // the receipt will still be read again and resolved next time they view it.
@@ -541,5 +569,42 @@ public class ReceiptActivity extends AppCompatActivity
     public void onActivityResult(int reqCode, int resultCode, Intent data)
     {
         super.onActivityResult(reqCode, resultCode, data);
+    }
+
+    private void stopBackgroundThread()
+    {
+        if(backgroundThread == null)
+        {
+            return;
+        }
+
+        backgroundThread.quitSafely();
+        try
+        {
+            backgroundThread.join();
+            backgroundThread = null;
+            backgroundHandler = null;
+        }
+        catch (InterruptedException e)
+        {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+
+    /**
+     * Starts a background thread and its {@link Handler}.
+     */
+    private void startBackgroundThread()
+    {
+        backgroundThread = new HandlerThread(this.getClass().getName());
+        backgroundThread.start();
+        backgroundHandler = new Handler(backgroundThread.getLooper());
+    }
+
+    @Override
+    public void onPause()
+    {
+        stopBackgroundThread();
+        super.onPause();
     }
 }

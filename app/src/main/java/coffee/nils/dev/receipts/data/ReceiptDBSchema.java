@@ -1,7 +1,8 @@
 package coffee.nils.dev.receipts.data;
 
-import java.security.PublicKey;
-
+/**
+ * Constants for the DB schema
+ */
 public class ReceiptDBSchema
 {
     public static final class ReceiptTable
