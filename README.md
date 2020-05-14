@@ -21,5 +21,5 @@ set(pathToProject 'path to where you cloned this project')
 set(pathToOpenCv 'where you downloaded OpenCV-android-sdk')
 ```
 
-Next you should be able to make and run the project.
+Next you should be able to build and run the project.
 
