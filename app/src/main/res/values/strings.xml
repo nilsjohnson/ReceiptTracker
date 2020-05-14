@@ -34,4 +34,7 @@
     <string name="date_filter_applied">Date Filter Applied</string>
     <string name="showing_all_dates">Showing All Dates</string>
     <string name="uncategorized">uncategorized</string>
+    <string name="redo">redo</string>
+    <string name="request_permission">Allow camera use?</string>
+    <string name="camera_error">Camera Error</string>
 </resources>
