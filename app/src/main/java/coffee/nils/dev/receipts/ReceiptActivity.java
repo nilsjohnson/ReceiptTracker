@@ -392,9 +392,8 @@ public class ReceiptActivity extends AppCompatActivity
         {
             // if the user looked at this receipt for the first time, then hit the back button, w/out
             // making any changes, we assume it's OK.
-            if(receipt.hasBeenReviewd() == false)
+            if(!receipt.hasBeenReviewd())
             {
-                receipt.setHasBeenReviewed(true);
                 saveReceipt();
             }
             finish();
@@ -433,7 +432,6 @@ public class ReceiptActivity extends AppCompatActivity
         // "teach" this receipt to the reader
         if(!receipt.hasBeenReviewd())
         {
-           // receipt.setHasBeenReviewed(true);
             receiptChanged = true;
             receiptReader.setCorrectStoreName(editTextName.getText().toString());
             receiptReader.resolve();
