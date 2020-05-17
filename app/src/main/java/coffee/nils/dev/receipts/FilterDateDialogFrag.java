@@ -95,7 +95,7 @@ public class FilterDateDialogFrag extends DialogFragment
         });
 
         return new AlertDialog.Builder(getActivity())
-                .setTitle(R.string.filter_title)
+                .setTitle(R.string.filter_title_date)
                 .setView(filterView)
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
                 {

@@ -433,7 +433,7 @@ public class ReceiptActivity extends AppCompatActivity
         // "teach" this receipt to the reader
         if(!receipt.hasBeenReviewd())
         {
-            receipt.setHasBeenReviewed(true);
+           // receipt.setHasBeenReviewed(true);
             receiptChanged = true;
             receiptReader.setCorrectStoreName(editTextName.getText().toString());
             receiptReader.resolve();
@@ -444,8 +444,22 @@ public class ReceiptActivity extends AppCompatActivity
             // these must be valid before saving.
             if(validAmount && validName && validDate)
             {
-                // update the receipt
-                Toast toast = Toast.makeText(getApplicationContext(),R.string.saved,Toast. LENGTH_SHORT);
+                // message we show upon saving depends if this is a new receipt, or an update.
+                String message;
+                // if this is a new receipt
+                if(!receipt.hasBeenReviewd())
+                {
+                    message = getResources().getString(R.string.receipt_added);
+                    // next time the user views this receipt, they will be reviewing it
+                    receipt.setHasBeenReviewed(true);
+                }
+                // otherwise this is an update
+                else
+                {
+                    message = getResources().getString(R.string.receipt_updated);
+                }
+
+                Toast toast = Toast.makeText(getApplicationContext(), message, Toast. LENGTH_SHORT);
                 writeUpdate();
                 toast.show();
                 finish();

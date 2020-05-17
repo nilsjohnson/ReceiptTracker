@@ -7,7 +7,7 @@
     <string name="are_you_sure">Update Receipt?</string>
     <string name="no">no</string>
     <string name="yes">yes</string>
-    <string name="saved">Receipt Updated</string>
+    <string name="receipt_updated">Receipt Updated</string>
     <string name="check_fields">Please Check Input</string>
     <string name="ok">ok</string>
     <string name="spellchecker_name">storeNameSpellchecker</string>
@@ -22,7 +22,7 @@
     <string name="filter">Date Filter</string>
     <string name="action_settings">action settings!</string>
     <string name="export">Export</string>
-    <string name="filter_title">Add Filter</string>
+    <string name="filter_title_date">Date Filter</string>
     <string name="remove_filter">Remove Filter</string>
     <string name="apply_filter">Apply</string>
     <string name="share">Share</string>
@@ -34,4 +34,5 @@
     <string name="date_filter_applied">Date Filter Applied</string>
     <string name="showing_all_dates">Showing All Dates</string>
     <string name="uncategorized">uncategorized</string>
+    <string name="receipt_added">Receipt Saved</string>
 </resources>

@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="coffee.nils.dev.myapplication.MainActivity">
     <item
-        android:id="@+id/action_filter"
+        android:id="@+id/action_filter_date"
         android:orderInCategory="100"
         android:title="@string/filter"
         app:showAsAction="never" />
