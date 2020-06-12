@@ -3,41 +3,19 @@ package coffee.nils.dev.receipts.util;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-//import android.graphics.Point;
 import android.media.Image;
 import android.util.Log;
 
 import org.opencv.android.Utils;
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
-import org.opencv.core.MatOfInt;
-import org.opencv.core.MatOfInt4;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
+
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
-
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.opencv.core.CvType.CV_8UC1;
-import static org.opencv.imgproc.Imgproc.CHAIN_APPROX_SIMPLE;
-import static org.opencv.imgproc.Imgproc.COLOR_BGR2GRAY;
 import static org.opencv.imgproc.Imgproc.COLOR_BGR2RGB;
-import static org.opencv.imgproc.Imgproc.RETR_CCOMP;
-import static org.opencv.imgproc.Imgproc.THRESH_BINARY;
-import static org.opencv.imgproc.Imgproc.THRESH_OTSU;
 import static org.opencv.imgproc.Imgproc.cvtColor;
-import static org.opencv.imgproc.Imgproc.findContours;
 import static org.opencv.imgproc.Imgproc.resize;
-import static org.opencv.imgproc.Imgproc.threshold;
 
 public class ImageUtil
 {
@@ -151,7 +129,6 @@ public class ImageUtil
         return autoCrop(mat);
 
     }
-
 
     public static Mat readMat(String path)
     {

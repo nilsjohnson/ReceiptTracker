@@ -18,7 +18,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++14")
 
 include_directories(${pathToOpenCv}/sdk/native/jni/include)
 
-
 add_library( # Sets the name of the library.
         native-lib
 
@@ -26,7 +25,9 @@ add_library( # Sets the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
-        native-lib.cpp)
+        native-lib.cpp
+        ReceiptCropper.h
+        ReceiptCropper.cpp)
 
 add_library(lib_opencv SHARED IMPORTED)
 
