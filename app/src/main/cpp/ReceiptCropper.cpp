@@ -22,7 +22,7 @@ ReceiptCropper::ReceiptCropper(Mat* mat)
 {
     receipt = mat;
     setPortrait();
-    crop(receipt, hasBrightEdges(receipt));
+    crop(receipt);
 
 }
 
@@ -38,45 +38,8 @@ bool ReceiptCropper::compareContourAreas(vector<Point> contour_1, vector<Point> 
     return (i > j);
 }
 
-bool ReceiptCropper::hasBrightEdges(Mat *mat) {
-    Rect rect(0, 0, 10, mat->rows);
-    Mat left(*mat, rect);
-    Rect rect2(mat->cols - 10, 0, 10, mat->rows);
-    Mat right(*mat, rect2);
-
-    if (DEBUG) {
-        imwrite(DEBUG_OUT_DIR + "left.jpg", left);
-    }
-    if (DEBUG) {
-        imwrite(DEBUG_OUT_DIR + "right.jpg", right);
-    }
-
-    Mat edges[] = { left, right };
-
-    Mat left_right_joined;
-    hconcat(edges, 2, left_right_joined);
-    if (DEBUG) {
-        imwrite(DEBUG_OUT_DIR + "lr_join.jpg", left_right_joined);
-    }
-
-    Mat hsv;
-    cvtColor(left_right_joined, hsv, COLOR_BGR2HSV);
-
-    const auto result = mean(hsv);
-
-    left.release();
-    right.release();
-
-    if (result[2] > BRIGHT) {
-        hsv.release();
-        return true;
-    }
-    hsv.release();
-    return false;
-}
-
-void ReceiptCropper::crop(Mat *image, bool brightEdges) {
-    int threshVal = brightEdges ? THRESH_BRIGHT : THRESH_NORMAL;
+void ReceiptCropper::crop(Mat *image) {
+    int threshVal = THRESH_VALUE;
 
     if (DEBUG) {
         imwrite(DEBUG_OUT_DIR + "original.jpg", *image);

@@ -23,17 +23,10 @@ private:
     Mat* receipt;
     // the cropped receipt
     Mat* cropped;
-    // values to set the threshold to when finding the receipt
-    const int THRESH_BRIGHT = 200;
-    const int THRESH_NORMAL = 150;
-
-    // max brightness level before toggle to THRESH_BRIGHT
-    const int BRIGHT = 110;
-    bool hasBrightEdges(Mat* mat);
-
+    const int THRESH_VALUE = 150;
     void swap(int &a, int &b);
     static bool compareContourAreas(vector<Point> contour_1, vector<Point> contour_2);
-    void crop(Mat* mat, bool brightEdges);
+    void crop(Mat* mat);
     void setPortrait();
 public:
     ReceiptCropper(Mat* receipt);
